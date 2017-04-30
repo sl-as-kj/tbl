@@ -104,10 +104,8 @@ def render(win, model, state):
 
     # Truncate to window size and position.
     layout_x = [ x for x, _ in layout ]
-    # y_max, x_max = stdscr.getmaxyx()
-    y_max, x_max = 69, 80
     i0 = bisect_right(layout_x, state.x) - 1
-    i1 = bisect_left(layout_x, state.x + x_max)
+    i1 = bisect_left(layout_x, state.x + max_x)
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
