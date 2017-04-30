@@ -44,6 +44,7 @@ class State(object):
         num_columns = len(model.cols)
         self.vis = [True] * num_columns
         self.fmt = [ choose_fmt(c.arr) for c in model.cols ]
+        self.row = 0
         self.x = 0
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
@@ -109,11 +110,12 @@ def render(win, model, state):
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
-    for r in range(min(max_y - 1, model.num_row)):
+    rows = min(max_y - 1, model.num_row - state.row)
+    for r in range(rows):
         win.move(r, 0)
         for x, v in layout:
             if isinstance(v, int):
-                v = state.fmt[v](model.cols[v].arr[r])
+                v = state.fmt[v](model.cols[v].arr[state.row + r])
             
             if x < 0:
                 v = v[-x :]
@@ -172,16 +174,22 @@ def main():
         while True:
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
-            if c == ord('j'):
+            if c == curses.KEY_LEFT:
                 if state.x > 0:
                     state.x -= 1
-            elif c == ord('J'):
+            elif c == curses.KEY_SLEFT:
                 if state.x >= 8:
                     state.x -= 8
-            elif c == ord('k'):
+            elif c == curses.KEY_RIGHT:
                 state.x += 1
-            elif c == ord('K'):
+            elif c == curses.KEY_SRIGHT:
                 state.x += 8
+            elif c == curses.KEY_UP:
+                if state.row > 0:
+                    state.row -= 1
+            elif c == curses.KEY_DOWN:
+                if state.row < model.num_row - 1:
+                    state.row += 1
             elif c == ord('q'):
                 break
             else:
