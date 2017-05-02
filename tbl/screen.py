@@ -1,5 +1,3 @@
-from   __future__ import absolute_import, division, print_function, unicode_literals
-
 from   bisect import *
 from   contextlib import contextmanager
 import curses
@@ -125,6 +123,18 @@ def render(win, model, state):
             win.addstr(v)
 
 
+def advance_column(model, state, forward=True):
+    layout = lay_out_cols(model, state)
+    # Select columns only.
+    xs = [ x for x, i in layout if isinstance(i, int) ]
+
+    if forward:
+        return xs[min(bisect_right(xs, state.x), len(xs) - 1)]
+    else:
+        return xs[max(bisect_right(xs, state.x - 1) - 1, 0)]
+    
+
+
 @contextmanager
 def curses_screen():
     """
@@ -175,15 +185,14 @@ def main():
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
             if c == curses.KEY_LEFT:
+                state.x = advance_column(model, state, forward=False)
+            elif c == curses.KEY_SLEFT:
                 if state.x > 0:
                     state.x -= 1
-            elif c == curses.KEY_SLEFT:
-                if state.x >= 8:
-                    state.x -= 8
             elif c == curses.KEY_RIGHT:
-                state.x += 1
+                state.x = advance_column(model, state, forward=True)
             elif c == curses.KEY_SRIGHT:
-                state.x += 8
+                state.x += 1
             elif c == curses.KEY_UP:
                 if state.row > 0:
                     state.row -= 1
