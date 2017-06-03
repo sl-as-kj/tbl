@@ -5,6 +5,8 @@ import functools
 import logging
 import sys
 
+from   .view import State
+
 #-------------------------------------------------------------------------------
 
 class Model(object):
@@ -25,28 +27,6 @@ class Model(object):
             self.num_row = len(cols[0].arr)
             assert all( len(c.arr) == self.num_row for c in cols )
         self.cols = cols
-
-
-
-def choose_fmt(arr):
-    width = max( len(str(a)) for a in arr )
-    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
-    fmt.width = width
-    return fmt
-
-
-class State(object):
-    # FIXME: Interim.
-
-    def __init__(self, model):
-        num_columns = len(model.cols)
-        self.vis = [True] * num_columns
-        self.fmt = [ choose_fmt(c.arr) for c in model.cols ]
-        self.row = 0
-        self.x = 0
-        self.left_border    = "\u2551 "
-        self.separator      = " \u2502 "
-        self.right_border   = " \u2551"
 
 
 
