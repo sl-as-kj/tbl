@@ -51,6 +51,8 @@ def lay_out_cols(model, state):
     first_col = True
 
     for i in range(model.num_col):
+        name = model.cols[i].name
+
         if not state.vis[i]:
             # Not visibile.
             continue
@@ -61,7 +63,7 @@ def lay_out_cols(model, state):
             layout.append([x0, state.separator])
             x0 += len(state.separator)
 
-        fmt = state.fmt[i]
+        fmt = state.get_fmt(name)
         layout.append([x0, i])
         x0 += fmt.width
 
@@ -87,13 +89,15 @@ def render(win, model, state):
     i1 = bisect_left(layout_x, state.x + max_x)
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
+    fmts = [ state.get_fmt(c.name) for c in model.cols ]
+
     # Now, draw.
     rows = min(max_y - 1, model.num_row - state.row)
     for r in range(rows):
         win.move(r, 0)
         for x, v in layout:
             if isinstance(v, int):
-                v = state.fmt[v](model.cols[v].arr[state.row + r])
+                v = fmts[v](model.cols[v].arr[state.row + r])
             
             if x < 0:
                 v = v[-x :]

@@ -15,12 +15,18 @@ class State(object):
     def __init__(self, model):
         num_columns = len(model.cols)
         self.vis = [True] * num_columns
-        self.fmt = [ choose_fmt(c.arr) for c in model.cols ]
+        self.fmt = { c.name: choose_fmt(c.arr) for c in model.cols }
         self.row = 0
         self.x = 0
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
 
+
+    def get_fmt(self, name):
+        """
+        Returns the formatter for a column, by name.
+        """
+        return self.fmt[name]
 
 
