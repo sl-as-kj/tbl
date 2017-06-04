@@ -25,7 +25,7 @@ def render(win, model, state):
     i1 = bisect_left(layout_x, state.x + max_x)
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
-    fmts = [ state.get_fmt(c.name) for c in model.cols ]
+    fmts = [ state.get_fmt(c.id) for c in model.cols ]
 
     # FIXME: This is wrong; use IDs.
     cols = list(model.cols)

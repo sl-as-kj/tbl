@@ -14,7 +14,7 @@ class State(object):
 
     def __init__(self, model):
         self.vis = [True] * model.num_cols
-        self.fmt = { c.name: choose_fmt(c.arr) for c in model.cols }
+        self.fmt = { c.id: choose_fmt(c.arr) for c in model.cols }
         self.row = 0
         self.x = 0
         self.left_border    = "\u2551 "
@@ -60,7 +60,7 @@ def lay_out_cols(model, state):
             layout.append([x0, state.separator])
             x0 += len(state.separator)
 
-        fmt = state.get_fmt(col.name)  # FIXME: Use ID.
+        fmt = state.get_fmt(col.id)
         layout.append([x0, i])
         x0 += fmt.width
 
