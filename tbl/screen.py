@@ -5,30 +5,8 @@ import functools
 import logging
 import sys
 
+from   .model import Model
 from   .view import State, lay_out_cols
-
-#-------------------------------------------------------------------------------
-
-class Model(object):
-    # FIXME: Interim.
-
-    class Col(object):
-
-        def __init__(self, name, arr):
-            self.name = name
-            self.arr = arr
-
-
-    def __init__(self, cols):
-        self.num_col = len(cols)
-        if self.num_col == 0:
-            self.num_row = 0
-        else:
-            self.num_row = len(cols[0].arr)
-            assert all( len(c.arr) == self.num_row for c in cols )
-        self.cols = cols
-
-
 
 #-------------------------------------------------------------------------------
 
@@ -49,13 +27,16 @@ def render(win, model, state):
 
     fmts = [ state.get_fmt(c.name) for c in model.cols ]
 
+    # FIXME: This is wrong; use IDs.
+    cols = list(model.cols)
+
     # Now, draw.
-    rows = min(max_y - 1, model.num_row - state.row)
+    rows = min(max_y - 1, model.num_rows - state.row)
     for r in range(rows):
         win.move(r, 0)
         for x, v in layout:
             if isinstance(v, int):
-                v = fmts[v](model.cols[v].arr[state.row + r])
+                v = fmts[v](cols[v].arr[state.row + r])
             
             if x < 0:
                 v = v[-x :]
@@ -109,7 +90,7 @@ def load_test(path):
         rows = iter(reader)
         names = next(rows)
         arrs = zip(*list(rows))
-    model = Model([ Model.Col(n, a) for n, a in zip(names, arrs) ])
+    model = Model([ Model.Col(a, n) for n, a in zip(names, arrs) ])
     state = State(model)
     return model, state
 
@@ -139,7 +120,7 @@ def main():
                 if state.row > 0:
                     state.row -= 1
             elif c == curses.KEY_DOWN:
-                if state.row < model.num_row - 1:
+                if state.row < model.num_rows - 1:
                     state.row += 1
             elif c == ord('q'):
                 break
