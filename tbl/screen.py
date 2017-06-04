@@ -5,6 +5,8 @@ import functools
 import logging
 import sys
 
+from   .lib import log
+
 #-------------------------------------------------------------------------------
 
 class Model(object):
@@ -177,7 +179,7 @@ def main():
 
     model, state = load_test(sys.argv[1])
 
-    with curses_screen() as stdscr:
+    with log.replay(), curses_screen() as stdscr:
         render(stdscr, model, state)
         stdscr.refresh()
 
