@@ -5,92 +5,10 @@ import functools
 import logging
 import sys
 
-#-------------------------------------------------------------------------------
-
-class Model(object):
-    # FIXME: Interim.
-
-    class Col(object):
-
-        def __init__(self, name, arr):
-            self.name = name
-            self.arr = arr
-
-
-    def __init__(self, cols):
-        self.num_col = len(cols)
-        if self.num_col == 0:
-            self.num_row = 0
-        else:
-            self.num_row = len(cols[0].arr)
-            assert all( len(c.arr) == self.num_row for c in cols )
-        self.cols = cols
-
-
-
-def choose_fmt(arr):
-    width = max( len(str(a)) for a in arr )
-    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
-    fmt.width = width
-    return fmt
-
-
-class State(object):
-    # FIXME: Interim.
-
-    def __init__(self, model):
-        num_columns = len(model.cols)
-        self.vis = [True] * num_columns
-        self.fmt = [ choose_fmt(c.arr) for c in model.cols ]
-        self.row = 0
-        self.x = 0
-        self.left_border    = "\u2551 "
-        self.separator      = " \u2502 "
-        self.right_border   = " \u2551"
-
-
+from   .model import Model
+from   .view import State, lay_out_cols
 
 #-------------------------------------------------------------------------------
-
-def lay_out_cols(model, state):
-    """
-    Computes column layout.
-
-    @return
-      A sequence of `[x, item]` pairs describing layout, where `x` is the
-      column position and `item` is either a column index from the model or
-      a string literal.
-    """
-    layout = []
-    x0 = 0
-
-    if state.left_border:
-        layout.append([x0, state.left_border])
-        x0 += len(state.left_border)
-
-    first_col = True
-
-    for i in range(model.num_col):
-        if not state.vis[i]:
-            # Not visibile.
-            continue
-        
-        if first_col:
-            first_col = False
-        elif state.separator:
-            layout.append([x0, state.separator])
-            x0 += len(state.separator)
-
-        fmt = state.fmt[i]
-        layout.append([x0, i])
-        x0 += fmt.width
-
-    if state.right_border:
-        layout.append([x0, state.right_border])
-        x0 += len(state.right_border)
-
-    return layout
-
 
 def render(win, model, state):
     """
@@ -107,13 +25,18 @@ def render(win, model, state):
     i1 = bisect_left(layout_x, state.x + max_x)
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
+    fmts = [ state.get_fmt(c.name) for c in model.cols ]
+
+    # FIXME: This is wrong; use IDs.
+    cols = list(model.cols)
+
     # Now, draw.
-    rows = min(max_y - 1, model.num_row - state.row)
+    rows = min(max_y - 1, model.num_rows - state.row)
     for r in range(rows):
         win.move(r, 0)
         for x, v in layout:
             if isinstance(v, int):
-                v = state.fmt[v](model.cols[v].arr[state.row + r])
+                v = fmts[v](cols[v].arr[state.row + r])
             
             if x < 0:
                 v = v[-x :]
@@ -167,7 +90,7 @@ def load_test(path):
         rows = iter(reader)
         names = next(rows)
         arrs = zip(*list(rows))
-    model = Model([ Model.Col(n, a) for n, a in zip(names, arrs) ])
+    model = Model([ Model.Col(a, n) for n, a in zip(names, arrs) ])
     state = State(model)
     return model, state
 
@@ -197,7 +120,7 @@ def main():
                 if state.row > 0:
                     state.row -= 1
             elif c == curses.KEY_DOWN:
-                if state.row < model.num_row - 1:
+                if state.row < model.num_rows - 1:
                     state.row += 1
             elif c == ord('q'):
                 break
