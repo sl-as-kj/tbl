@@ -33,14 +33,22 @@ def render(win, model, state):
         for x, v in layout:
             if isinstance(v, int):
                 # Got a col ID.
-                v = state.get_fmt(v)(model.get_col(v).arr[idx])
+                val = state.get_fmt(v)(model.get_col(v).arr[idx])
+            else:
+                val = v
             
             if x < 0:
-                v = v[-x :]
-            if x + len(v) >= max_x:
-                v = v[: max_x - x]
+                val = val[-x :]
+            if x + len(val) >= max_x:
+                val = val[: max_x - x]
 
-            win.addstr(v)
+            attr = (
+                     Attrs.cur_pos if v == state.x and idx == state.y
+                else Attrs.cur_col if v == state.x
+                else Attrs.cur_row if                  idx == state.y
+                else Attrs.normal
+            )
+            win.addstr(val, attr)
 
 
 def advance_column(model, state, forward=True):
@@ -68,6 +76,8 @@ def curses_screen():
     curses.cbreak()
     curses.curs_set(False)
 
+    init_attrs()
+
     try:
         yield stdscr
     finally:
@@ -76,6 +86,26 @@ def curses_screen():
         stdscr.keypad(False)
         curses.echo()
         curses.endwin()
+
+
+class Attrs:
+    pass
+    
+
+def init_attrs():
+    curses.start_color()
+    curses.use_default_colors()
+
+    Attrs.normal = curses.color_pair(0)
+
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+    Attrs.cur_pos = curses.color_pair(1)
+
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_col = curses.color_pair(2)
+
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_row = curses.color_pair(3)
 
 
 #-------------------------------------------------------------------------------
@@ -101,7 +131,6 @@ def main():
 
     with curses_screen() as stdscr:
         render(stdscr, model, state)
-        stdscr.refresh()
 
         while True:
             c = stdscr.getch()
@@ -127,7 +156,6 @@ def main():
                 continue
             stdscr.erase()
             render(stdscr, model, state)
-            stdscr.refresh()
 
 
 

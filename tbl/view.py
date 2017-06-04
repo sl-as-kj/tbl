@@ -20,8 +20,11 @@ class State(object):
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
         # Character coordinate of left edge of display.
         self.x0     = 0
-        # Row index of top edge of displa.
+        # Row index of top edge of display.
         self.y0     = 0
+        # Col and row index of the cursor position.
+        self.x      = 0
+        self.y      = 0
         
         # Decoration characters.
         self.left_border    = "\u2551 "
