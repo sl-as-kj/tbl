@@ -25,18 +25,14 @@ def render(win, model, state):
     i1 = bisect_left(layout_x, state.x + max_x)
     layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
 
-    fmts = [ state.get_fmt(c.id) for c in model.cols ]
-
-    # FIXME: This is wrong; use IDs.
-    cols = list(model.cols)
-
     # Now, draw.
     rows = min(max_y - 1, model.num_rows - state.row)
     for r in range(rows):
         win.move(r, 0)
         for x, v in layout:
             if isinstance(v, int):
-                v = fmts[v](cols[v].arr[state.row + r])
+                # Got a col ID.
+                v = state.get_fmt(v)(model.get_col(v).arr[state.row + r])
             
             if x < 0:
                 v = v[-x :]
