@@ -21,18 +21,19 @@ def render(win, model, state):
 
     # Truncate to window size and position.
     layout_x = [ x for x, _ in layout ]
-    i0 = bisect_right(layout_x, state.x) - 1
-    i1 = bisect_left(layout_x, state.x + max_x)
-    layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
+    i0 = bisect_right(layout_x, state.x0) - 1
+    i1 = bisect_left(layout_x, state.x0 + max_x)
+    layout = [ (x - state.x0, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
-    rows = min(max_y - 1, model.num_rows - state.row)
+    rows = min(max_y - 1, model.num_rows - state.y0)
     for r in range(rows):
         win.move(r, 0)
+        idx = state.y0 + r
         for x, v in layout:
             if isinstance(v, int):
                 # Got a col ID.
-                v = state.get_fmt(v)(model.get_col(v).arr[state.row + r])
+                v = state.get_fmt(v)(model.get_col(v).arr[idx])
             
             if x < 0:
                 v = v[-x :]
@@ -48,9 +49,9 @@ def advance_column(model, state, forward=True):
     xs = [ x for x, i in layout if isinstance(i, int) ]
 
     if forward:
-        return xs[min(bisect_right(xs, state.x), len(xs) - 1)]
+        return xs[min(bisect_right(xs, state.x0), len(xs) - 1)]
     else:
-        return xs[max(bisect_right(xs, state.x - 1) - 1, 0)]
+        return xs[max(bisect_right(xs, state.x0 - 1) - 1, 0)]
     
 
 
@@ -106,20 +107,20 @@ def main():
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
             if c == curses.KEY_LEFT:
-                state.x = advance_column(model, state, forward=False)
+                state.x0 = advance_column(model, state, forward=False)
             elif c == curses.KEY_SLEFT:
-                if state.x > 0:
-                    state.x -= 1
+                if state.x0 > 0:
+                    state.x0 -= 1
             elif c == curses.KEY_RIGHT:
-                state.x = advance_column(model, state, forward=True)
+                state.x0 = advance_column(model, state, forward=True)
             elif c == curses.KEY_SRIGHT:
-                state.x += 1
+                state.x0 += 1
             elif c == curses.KEY_UP:
-                if state.row > 0:
-                    state.row -= 1
+                if state.y0 > 0:
+                    state.y0 -= 1
             elif c == curses.KEY_DOWN:
-                if state.row < model.num_rows - 1:
-                    state.row += 1
+                if state.y0 < model.num_rows - 1:
+                    state.y0 += 1
             elif c == ord('q'):
                 break
             else:

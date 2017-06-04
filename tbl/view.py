@@ -18,11 +18,11 @@ class State(object):
         self.order  = [ c.id for c in model.cols ]
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
-        # Top row displayed.
-        self.row    = 0
-        # Horizontal position: character coordinate of left column.
-        self.x      = 0
-
+        # Character coordinate of left edge of display.
+        self.x0     = 0
+        # Row index of top edge of displa.
+        self.y0     = 0
+        
         # Decoration characters.
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
