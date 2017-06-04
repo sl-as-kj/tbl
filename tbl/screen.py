@@ -5,7 +5,7 @@ import functools
 import logging
 import sys
 
-from   .view import State
+from   .view import State, lay_out_cols
 
 #-------------------------------------------------------------------------------
 
@@ -31,48 +31,6 @@ class Model(object):
 
 
 #-------------------------------------------------------------------------------
-
-def lay_out_cols(model, state):
-    """
-    Computes column layout.
-
-    @return
-      A sequence of `[x, item]` pairs describing layout, where `x` is the
-      column position and `item` is either a column index from the model or
-      a string literal.
-    """
-    layout = []
-    x0 = 0
-
-    if state.left_border:
-        layout.append([x0, state.left_border])
-        x0 += len(state.left_border)
-
-    first_col = True
-
-    for i in range(model.num_col):
-        name = model.cols[i].name
-
-        if not state.vis[i]:
-            # Not visibile.
-            continue
-        
-        if first_col:
-            first_col = False
-        elif state.separator:
-            layout.append([x0, state.separator])
-            x0 += len(state.separator)
-
-        fmt = state.get_fmt(name)
-        layout.append([x0, i])
-        x0 += fmt.width
-
-    if state.right_border:
-        layout.append([x0, state.right_border])
-        x0 += len(state.right_border)
-
-    return layout
-
 
 def render(win, model, state):
     """
