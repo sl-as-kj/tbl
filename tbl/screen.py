@@ -15,7 +15,7 @@ def render(win, model, state):
     Renders `model` with view `state` in curses `win`.
     """
     # Compute the column layout.
-    layout = lay_out_cols(model, state)
+    layout = lay_out_cols(state)
 
     max_y, max_x = win.getmaxyx()
 

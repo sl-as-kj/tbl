@@ -25,7 +25,7 @@ class State(object):
         # Col and row index of the cursor position.
         self.x      = 0
         self.y      = 0
-        
+
         # Decoration characters.
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
@@ -42,7 +42,7 @@ class State(object):
 
 #-------------------------------------------------------------------------------
 
-def lay_out_cols(model, state):
+def lay_out_cols(state):
     """
     Computes column layout.
 
