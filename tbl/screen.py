@@ -136,23 +136,31 @@ def main():
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
             if c == curses.KEY_LEFT:
-                state.x0 = advance_column(model, state, forward=False)
-            elif c == curses.KEY_SLEFT:
-                if state.x0 > 0:
-                    state.x0 -= 1
+                if state.x > 0:
+                    state.x -= 1
             elif c == curses.KEY_RIGHT:
-                state.x0 = advance_column(model, state, forward=True)
+                if state.x < len(state.order) - 1:
+                    state.x += 1
+
+            elif c == curses.KEY_SLEFT:
+                state.x0 = advance_column(model, state, forward=False)
             elif c == curses.KEY_SRIGHT:
-                state.x0 += 1
+                state.x0 = advance_column(model, state, forward=True)
+
             elif c == curses.KEY_UP:
-                if state.y0 > 0:
-                    state.y0 -= 1
+                if state.y > 0:
+                    state.y -= 1
+                    if state.y0 > state.y:
+                        state.y0 = state.y
             elif c == curses.KEY_DOWN:
-                if state.y0 < model.num_rows - 1:
-                    state.y0 += 1
+                if state.y < model.num_rows - 1:
+                    state.y += 1
+                # FIXME: Scroll down if necessary.
+
             elif c == ord('q'):
                 break
             else:
+
                 continue
             stdscr.erase()
             render(stdscr, model, state)
