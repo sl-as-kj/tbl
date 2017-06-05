@@ -18,6 +18,7 @@ class State(object):
         self.order  = [ c.id for c in model.cols ]
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
+
         # Character coordinate of left edge of display.
         self.x0     = 0
         # Row index of top edge of display.
@@ -25,12 +26,21 @@ class State(object):
         # Col and row index of the cursor position.
         self.x      = 0
         self.y      = 0
+        # Window size.
+        self.sx     = 80
+        self.sy     = 25
 
         # Decoration characters.
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
 
+        self.__layout = None
+
+
+    def set_size(self, sx, sy):
+        self.sx = sx
+        self.sy = sy
         self.__layout = None
 
 

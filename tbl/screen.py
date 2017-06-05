@@ -17,16 +17,14 @@ def render(win, model, state):
     # Get the column layout.
     layout = state.layout
 
-    max_y, max_x = win.getmaxyx()
-
     # Truncate to window size and position.
     layout_x = [ x for x, _ in layout ]
     i0 = bisect_right(layout_x, state.x0) - 1
-    i1 = bisect_left(layout_x, state.x0 + max_x)
+    i1 = bisect_left(layout_x, state.x0 + state.sx)
     layout = [ (x - state.x0, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
-    rows = min(max_y - 1, model.num_rows - state.y0)
+    rows = min(state.sy - 1, model.num_rows - state.y0)
     for r in range(rows):
         win.move(r, 0)
         idx = state.y0 + r
@@ -39,8 +37,8 @@ def render(win, model, state):
             
             if x < 0:
                 val = val[-x :]
-            if x + len(val) >= max_x:
-                val = val[: max_x - x]
+            if x + len(val) >= state.sx:
+                val = val[: state.sx - x]
 
             attr = (
                      Attrs.cur_pos if v == state.x and idx == state.y
@@ -132,6 +130,8 @@ def main():
     scroll_step = 12
 
     with curses_screen() as stdscr:
+        sy, sx = stdscr.getmaxyx()
+        state.set_size(sx, sy)
         render(stdscr, model, state)
 
         while True:
@@ -171,6 +171,11 @@ def main():
 
             elif c == ord('q'):
                 break
+
+            elif c == curses.KEY_RESIZE:
+                sy, sx = stdscr.getmaxyx()
+                state.set_size(sx, sy)
+
             else:
 
                 continue
