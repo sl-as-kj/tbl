@@ -31,6 +31,8 @@ class State(object):
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
 
+        self.__layout = None
+
 
     def get_fmt(self, name):
         """
@@ -39,41 +41,46 @@ class State(object):
         return self.fmt[name]
 
 
+    @property
+    def layout(self):
+        if self.__layout is None:
+            self.__layout = self.__compute_layout()
+        return self.__layout
 
-#-------------------------------------------------------------------------------
 
-def lay_out_cols(state):
-    """
-    Computes column layout.
+    def __compute_layout(self):
+        """
+        Computes column layout.
 
-    @return
-      A sequence of `[x, item]` pairs describing layout, where `x` is the column
-      position and `item` is either a column ID or a string literal.
-    """
-    layout = []
-    x0 = 0
+        @return
+          A sequence of `[x, item]` pairs describing layout, where `x` is the column
+          position and `item` is either a column ID or a string literal.
+        """
+        layout = []
+        x0 = 0
 
-    if state.left_border:
-        layout.append([x0, state.left_border])
-        x0 += len(state.left_border)
+        if self.left_border:
+            layout.append([x0, self.left_border])
+            x0 += len(self.left_border)
 
-    first_col = True
+        first_col = True
 
-    for col_id in state.order:
-        if first_col:
-            first_col = False
-        elif state.separator:
-            layout.append([x0, state.separator])
-            x0 += len(state.separator)
+        for col_id in self.order:
+            if first_col:
+                first_col = False
+            elif self.separator:
+                layout.append([x0, self.separator])
+                x0 += len(self.separator)
 
-        fmt = state.get_fmt(col_id)
-        layout.append([x0, col_id])
-        x0 += fmt.width
+            fmt = self.get_fmt(col_id)
+            layout.append([x0, col_id])
+            x0 += fmt.width
 
-    if state.right_border:
-        layout.append([x0, state.right_border])
-        x0 += len(state.right_border)
+        if self.right_border:
+            layout.append([x0, self.right_border])
+            x0 += len(self.right_border)
 
-    return layout
+        return layout
+
 
 

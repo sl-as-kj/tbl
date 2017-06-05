@@ -6,7 +6,7 @@ import logging
 import sys
 
 from   .model import Model
-from   .view import State, lay_out_cols
+from   .view import State
 
 #-------------------------------------------------------------------------------
 
@@ -14,8 +14,8 @@ def render(win, model, state):
     """
     Renders `model` with view `state` in curses `win`.
     """
-    # Compute the column layout.
-    layout = lay_out_cols(state)
+    # Get the column layout.
+    layout = state.layout
 
     max_y, max_x = win.getmaxyx()
 
