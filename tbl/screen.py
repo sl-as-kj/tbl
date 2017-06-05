@@ -52,7 +52,7 @@ def render(win, model, state):
 
 
 def advance_column(model, state, forward=True):
-    layout = lay_out_cols(model, state)
+    layout = state.layout
     # Select columns only.
     xs = [ x for x, i in layout if isinstance(i, int) ]
 
@@ -129,6 +129,8 @@ def main():
 
     model, state = load_test(sys.argv[1])
 
+    scroll_step = 12
+
     with curses_screen() as stdscr:
         render(stdscr, model, state)
 
@@ -136,22 +138,32 @@ def main():
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
             if c == curses.KEY_LEFT:
-                if state.x > 0:
-                    state.x -= 1
+                state.x = max(state.x - 1, 0)
             elif c == curses.KEY_RIGHT:
-                if state.x < len(state.order) - 1:
-                    state.x += 1
+                state.x = min(state.x + 1, len(state.order) - 1)
+                # state.x0 = advance_column(model, state, forward=True)
 
-            elif c == curses.KEY_SLEFT:
-                state.x0 = advance_column(model, state, forward=False)
-            elif c == curses.KEY_SRIGHT:
-                state.x0 = advance_column(model, state, forward=True)
+            elif c == ord('h'):
+                state.x0 = max(state.x0 - scroll_step, 0)
+            elif c == ord('H'):
+                state.x0 = max(state.x0 - 1, 0)
+            elif c == ord('l'):
+                state.x0 += scroll_step  # FIXME: Bound.
+            elif c == ord('L'):
+                state.x0 += 1  # FIXME: Bound.
+            elif c == ord('k'):
+                state.y0 = max(state.y0 - scroll_step, 0)
+            elif c == ord('K'):
+                state.y0 = max(state.y0 - 1, 0)
+            elif c == ord('j'):
+                state.y0 = min(state.y0 + scroll_step, model.num_rows - 1)
+            elif c == ord('J'):
+                state.y0 = min(state.y0 + 1, model.num_rows - 1)
 
             elif c == curses.KEY_UP:
                 if state.y > 0:
                     state.y -= 1
-                    if state.y0 > state.y:
-                        state.y0 = state.y
+                    state.y0 = min(state.y, state.y0)
             elif c == curses.KEY_DOWN:
                 if state.y < model.num_rows - 1:
                     state.y += 1
