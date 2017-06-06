@@ -13,10 +13,17 @@ class State(object):
     # FIXME: Interim.
 
     def __init__(self, model):
-        self.vis = [True] * model.num_cols
-        self.fmt = { c.id: choose_fmt(c.arr) for c in model.cols }
-        self.row = 0
-        self.x = 0
+        # Displayed col order.  Also controls col visibility: not all cols
+        # need be included.
+        self.order  = [ c.id for c in model.cols ]
+        # Mapping from col ID to col formatter.
+        self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
+        # Top row displayed.
+        self.row    = 0
+        # Horizontal position: character coordinate of left column.
+        self.x      = 0
+
+        # Decoration characters.
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
@@ -29,6 +36,7 @@ class State(object):
         return self.fmt[name]
 
 
+
 #-------------------------------------------------------------------------------
 
 def lay_out_cols(model, state):
@@ -36,9 +44,8 @@ def lay_out_cols(model, state):
     Computes column layout.
 
     @return
-      A sequence of `[x, item]` pairs describing layout, where `x` is the
-      column position and `item` is either a column index from the model or
-      a string literal.
+      A sequence of `[x, item]` pairs describing layout, where `x` is the column
+      position and `item` is either a column ID or a string literal.
     """
     layout = []
     x0 = 0
@@ -49,19 +56,15 @@ def lay_out_cols(model, state):
 
     first_col = True
 
-    for i, col in enumerate(model.cols):
-        if not state.vis[i]:
-            # Not visibile.
-            continue
-        
+    for col_id in state.order:
         if first_col:
             first_col = False
         elif state.separator:
             layout.append([x0, state.separator])
             x0 += len(state.separator)
 
-        fmt = state.get_fmt(col.id)
-        layout.append([x0, i])
+        fmt = state.get_fmt(col_id)
+        layout.append([x0, col_id])
         x0 += fmt.width
 
     if state.right_border:

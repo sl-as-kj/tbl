@@ -45,6 +45,18 @@ class Model:
         self.__cols.insert(position, col)
 
 
+    def get_col(self, col_id):
+        """
+        Retrieves a column by ID.
+        """
+        # FIXME: At some point, we'll want a hash for this.
+        for col in self.__cols:
+            if col.id == col_id:
+                return col
+        else:
+            raise LookupError(col_id)
+
+
     @property
     def num_cols(self):
         return len(self.__cols)
