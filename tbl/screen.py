@@ -5,9 +5,9 @@ import functools
 import logging
 import sys
 
-from   .model import Model
-from   .view import State, lay_out_cols
+from   . import view
 from   .lib import log
+from   .model import Model
 
 #-------------------------------------------------------------------------------
 
@@ -15,43 +15,50 @@ def render(win, model, state):
     """
     Renders `model` with view `state` in curses `win`.
     """
-    # Compute the column layout.
-    layout = lay_out_cols(model, state)
-
-    max_y, max_x = win.getmaxyx()
+    # Get the column layout.
+    layout = state.layout
 
     # Truncate to window size and position.
     layout_x = [ x for x, _ in layout ]
-    i0 = bisect_right(layout_x, state.x) - 1
-    i1 = bisect_left(layout_x, state.x + max_x)
-    layout = [ (x - state.x, l) for x, l in layout[i0 : i1] ]
+    i0 = bisect_right(layout_x, state.x0) - 1
+    i1 = bisect_left(layout_x, state.x0 + state.sx)
+    layout = [ (x - state.x0, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
-    rows = min(max_y - 1, model.num_rows - state.row)
+    rows = min(state.sy - 1, model.num_rows - state.y0)
     for r in range(rows):
         win.move(r, 0)
+        idx = state.y0 + r
         for x, v in layout:
             if isinstance(v, int):
                 # Got a col ID.
-                v = state.get_fmt(v)(model.get_col(v).arr[state.row + r])
+                val = state.get_fmt(v)(model.get_col(v).arr[idx])
+            else:
+                val = v
             
             if x < 0:
-                v = v[-x :]
-            if x + len(v) >= max_x:
-                v = v[: max_x - x]
+                val = val[-x :]
+            if x + len(val) >= state.sx:
+                val = val[: state.sx - x]
 
-            win.addstr(v)
+            attr = (
+                     Attrs.cur_pos if v == state.x and idx == state.y
+                else Attrs.cur_col if v == state.x
+                else Attrs.cur_row if                  idx == state.y
+                else Attrs.normal
+            )
+            win.addstr(val, attr)
 
 
 def advance_column(model, state, forward=True):
-    layout = lay_out_cols(model, state)
+    layout = state.layout
     # Select columns only.
     xs = [ x for x, i in layout if isinstance(i, int) ]
 
     if forward:
-        return xs[min(bisect_right(xs, state.x), len(xs) - 1)]
+        return xs[min(bisect_right(xs, state.x0), len(xs) - 1)]
     else:
-        return xs[max(bisect_right(xs, state.x - 1) - 1, 0)]
+        return xs[max(bisect_right(xs, state.x0 - 1) - 1, 0)]
     
 
 
@@ -68,6 +75,8 @@ def curses_screen():
     curses.cbreak()
     curses.curs_set(False)
 
+    init_attrs()
+
     try:
         yield stdscr
     finally:
@@ -76,6 +85,26 @@ def curses_screen():
         stdscr.keypad(False)
         curses.echo()
         curses.endwin()
+
+
+class Attrs:
+    pass
+    
+
+def init_attrs():
+    curses.start_color()
+    curses.use_default_colors()
+
+    Attrs.normal = curses.color_pair(0)
+
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+    Attrs.cur_pos = curses.color_pair(1)
+
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_col = curses.color_pair(2)
+
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_row = curses.color_pair(3)
 
 
 #-------------------------------------------------------------------------------
@@ -90,7 +119,7 @@ def load_test(path):
     model = Model()
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
-    state = State(model)
+    state = view.State(model)
     return model, state
 
 
@@ -99,35 +128,59 @@ def main():
 
     model, state = load_test(sys.argv[1])
 
+    scroll_step = 12
+
     with log.replay(), curses_screen() as stdscr:
+        sy, sx = stdscr.getmaxyx()
+        state.set_size(sx, sy)
         render(stdscr, model, state)
-        stdscr.refresh()
 
         while True:
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
+            op = None
+
             if c == curses.KEY_LEFT:
-                state.x = advance_column(model, state, forward=False)
-            elif c == curses.KEY_SLEFT:
-                if state.x > 0:
-                    state.x -= 1
+                op = view.cursor_move(dx=-1)
             elif c == curses.KEY_RIGHT:
-                state.x = advance_column(model, state, forward=True)
-            elif c == curses.KEY_SRIGHT:
-                state.x += 1
+                op = view.cursor_move(dx=+1)
             elif c == curses.KEY_UP:
-                if state.row > 0:
-                    state.row -= 1
+                op = view.cursor_move(dy=-1)
             elif c == curses.KEY_DOWN:
-                if state.row < model.num_rows - 1:
-                    state.row += 1
+                op = view.cursor_move(dy=+1)
+
+            elif c == ord('h'):
+                op = view.cursor_move(dx=-scroll_step)
+            elif c == ord('H'):
+                op = view.cursor_move(dx=-1)
+            elif c == ord('l'):
+                op = view.cursor_move(dx=+scroll_step)
+            elif c == ord('L'):
+                op = view.cursor_move(dx=+1)
+            elif c == ord('k'):
+                op = view.cursor_move(dy=-scroll_step)
+            elif c == ord('K'):
+                op = view.cursor_move(dy=-1)
+            elif c == ord('j'):
+                op = view.cursor_move(dy=+scroll_step)
+            elif c == ord('J'):
+                op = view.cursor_move(dy=+1)
+
             elif c == ord('q'):
                 break
+
+            elif c == curses.KEY_RESIZE:
+                sy, sx = stdscr.getmaxyx()
+                state.set_size(sx, sy)
+
             else:
                 continue
+
+            if op is not None:
+                op(state)
+
             stdscr.erase()
             render(stdscr, model, state)
-            stdscr.refresh()
 
 
 

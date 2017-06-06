@@ -1,7 +1,8 @@
 from   collections import OrderedDict as odict
 import numpy as np
 
-from   tbl.screen import Model, State, lay_out_cols
+from   tbl.screen import Model
+from   tbl.view import State
 
 #-------------------------------------------------------------------------------
 
@@ -14,8 +15,7 @@ def test_lay_out_0():
     state.separator     = " || "
     state.right_border  = " <|"
 
-    layout = lay_out_cols(model, state)
-    layout = [ tuple(p) for p in layout ]
+    layout = [ tuple(p) for p in state.layout ]
     assert layout == [
         ( 0, "|> "),
         ( 3, 0),  # col 0
