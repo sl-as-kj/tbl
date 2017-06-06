@@ -6,6 +6,7 @@ import logging
 import sys
 
 from   .view import State, lay_out_cols
+from   .lib import log
 
 #-------------------------------------------------------------------------------
 
@@ -119,7 +120,7 @@ def main():
 
     model, state = load_test(sys.argv[1])
 
-    with curses_screen() as stdscr:
+    with log.replay(), curses_screen() as stdscr:
         render(stdscr, model, state)
         stdscr.refresh()
 
