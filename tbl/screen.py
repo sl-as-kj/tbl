@@ -131,7 +131,6 @@ def main():
     scroll_step = 12
 
     with log.replay(), curses_screen() as stdscr:
-    with curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
         state.set_size(sx, sy)
         render(stdscr, model, state)
