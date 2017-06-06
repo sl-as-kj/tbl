@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 
 #-------------------------------------------------------------------------------
@@ -44,11 +45,11 @@ class State(object):
         self.__layout = None
 
 
-    def get_fmt(self, name):
+    def get_fmt(self, col_id):
         """
         Returns the formatter for a column, by name.
         """
-        return self.fmt[name]
+        return self.fmt[col_id]
 
 
     @property
@@ -92,5 +93,35 @@ class State(object):
 
         return layout
 
+
+
+#-------------------------------------------------------------------------------
+
+def cursor_move(dx=0, dy=0):
+    def apply(state):
+        state.x += dx
+        state.x = max(0, min(len(state.order) - 1, state.x))
+
+        state.y += dy
+        # FIXME: Need to know max y / number of rows here.
+        state.y = max(0, state.y)
+
+        col_idx = state.order[state.x]
+        for x, i in state.layout:
+            if i == col_idx:
+                logging.info("x={}".format(x))
+                # Scroll right if necessary.
+                state.x0 = max(
+                    x + state.get_fmt(col_idx).width - state.sx, state.x0)
+                # Scroll left if necessary.
+                state.x0 = min(x, state.x0)
+                break
+        else:
+            assert(False)
+
+        state.y0 = min(state.y, state.y0)
+        state.y0 = max(state.y - state.sy + 2, state.y0)
+
+    return apply
 
 

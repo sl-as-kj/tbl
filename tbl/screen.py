@@ -5,8 +5,8 @@ import functools
 import logging
 import sys
 
+from   . import view
 from   .model import Model
-from   .view import State
 
 #-------------------------------------------------------------------------------
 
@@ -118,7 +118,7 @@ def load_test(path):
     model = Model()
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
-    state = State(model)
+    state = view.State(model)
     return model, state
 
 
@@ -137,37 +137,33 @@ def main():
         while True:
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
+            op = None
+
             if c == curses.KEY_LEFT:
-                state.x = max(state.x - 1, 0)
+                op = view.cursor_move(dx=-1)
             elif c == curses.KEY_RIGHT:
-                state.x = min(state.x + 1, len(state.order) - 1)
-                # state.x0 = advance_column(model, state, forward=True)
+                op = view.cursor_move(dx=+1)
+            elif c == curses.KEY_UP:
+                op = view.cursor_move(dy=-1)
+            elif c == curses.KEY_DOWN:
+                op = view.cursor_move(dy=+1)
 
             elif c == ord('h'):
-                state.x0 = max(state.x0 - scroll_step, 0)
+                op = view.cursor_move(dx=-scroll_step)
             elif c == ord('H'):
-                state.x0 = max(state.x0 - 1, 0)
+                op = view.cursor_move(dx=-1)
             elif c == ord('l'):
-                state.x0 += scroll_step  # FIXME: Bound.
+                op = view.cursor_move(dx=+scroll_step)
             elif c == ord('L'):
-                state.x0 += 1  # FIXME: Bound.
+                op = view.cursor_move(dx=+1)
             elif c == ord('k'):
-                state.y0 = max(state.y0 - scroll_step, 0)
+                op = view.cursor_move(dy=-scroll_step)
             elif c == ord('K'):
-                state.y0 = max(state.y0 - 1, 0)
+                op = view.cursor_move(dy=-1)
             elif c == ord('j'):
-                state.y0 = min(state.y0 + scroll_step, model.num_rows - 1)
+                op = view.cursor_move(dy=+scroll_step)
             elif c == ord('J'):
-                state.y0 = min(state.y0 + 1, model.num_rows - 1)
-
-            elif c == curses.KEY_UP:
-                if state.y > 0:
-                    state.y -= 1
-                    state.y0 = min(state.y, state.y0)
-            elif c == curses.KEY_DOWN:
-                if state.y < model.num_rows - 1:
-                    state.y += 1
-                # FIXME: Scroll down if necessary.
+                op = view.cursor_move(dy=+1)
 
             elif c == ord('q'):
                 break
@@ -177,8 +173,11 @@ def main():
                 state.set_size(sx, sy)
 
             else:
-
                 continue
+
+            if op is not None:
+                op(state)
+
             stdscr.erase()
             render(stdscr, model, state)
 
