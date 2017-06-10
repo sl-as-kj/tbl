@@ -128,8 +128,6 @@ def main():
 
     model, state = load_test(sys.argv[1])
 
-    scroll_step = 12
-
     with log.replay(), curses_screen() as stdscr:
         state.size.y, state.size.x = stdscr.getmaxyx()
         render(stdscr, model, state)
