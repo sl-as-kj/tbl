@@ -50,12 +50,12 @@ class State(object):
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
 
+        # Window size.
+        self.size = Coordinates(80, 25)
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
         # Cursor position.
         self.cur = Position(0, 0)
-        # Window size.
-        self.size = Coordinates(80, 25)
 
         # Decoration characters.
         self.left_border    = "\u2551"
