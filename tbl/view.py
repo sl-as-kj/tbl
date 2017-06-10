@@ -135,10 +135,17 @@ def scroll_to(state, pos):
     state.scr.y = max(state.cur.r - state.size.y + 2, state.scr.y)
 
 
+def move_cur(state, dc=0, dr=0):
+    """
+    Moves the cursor position.
 
-def cursor_move(state, dx=0, dy=0):
-    state.cur.c = max(0, min(len(state.order) - 1, state.cur.c + dx))
-    state.cur.r = max(0, state.cur.r + dy)
+    @param dc:
+      Change in col position.
+    @param dr:
+      Change in row position.
+    """
+    state.cur.c = max(0, min(len(state.order) - 1, state.cur.c + dc))
+    state.cur.r = max(0, state.cur.r + dr)
     scroll_to(state, state.cur)
 
 

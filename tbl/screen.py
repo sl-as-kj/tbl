@@ -137,13 +137,13 @@ def main():
             logging.info("getch() -> {!r}".format(c))
 
             if c == curses.KEY_LEFT:
-                view.cursor_move(state, dx=-1)
+                view.move_cur(state, dc=-1)
             elif c == curses.KEY_RIGHT:
-                view.cursor_move(state, dx=+1)
+                view.move_cur(state, dc=+1)
             elif c == curses.KEY_UP:
-                view.cursor_move(state, dy=-1)
+                view.move_cur(state, dr=-1)
             elif c == curses.KEY_DOWN:
-                view.cursor_move(state, dy=+1)
+                view.move_cur(state, dr=+1)
 
             elif c == ord('q'):
                 break
