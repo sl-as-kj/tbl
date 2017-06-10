@@ -58,9 +58,10 @@ class State(object):
         self.size = Coordinates(80, 25)
 
         # Decoration characters.
-        self.left_border    = "\u2551 "
-        self.separator      = " \u2502 "
-        self.right_border   = " \u2551"
+        self.left_border    = "\u2551"
+        self.separator      = "\u2502"
+        self.right_border   = "\u2551"
+        self.pad            = " "
 
 
     def get_fmt(self, col_id):
@@ -97,7 +98,7 @@ class State(object):
 
             fmt = self.get_fmt(col_id)
             layout.append([x0, col_id])
-            x0 += fmt.width
+            x0 += fmt.width + 2 * len(self.pad)
 
         if self.right_border:
             layout.append([x0, self.right_border])

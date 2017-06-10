@@ -33,6 +33,7 @@ def render(win, model, state):
             if isinstance(v, int):
                 # Got a col ID.
                 val = state.get_fmt(v)(model.get_col(v).arr[idx])
+                val = state.pad + val + state.pad
             else:
                 val = v
             
