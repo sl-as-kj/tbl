@@ -10,6 +10,36 @@ def choose_fmt(arr):
     return fmt
 
 
+class Position(object):
+    """
+    A location in (col, row) index coordinates.
+    """
+
+    def __init__(self, c, r):
+        self.c = c
+        self.r = r
+
+
+    def __iter__(self):
+        return iter((c, r))
+
+
+
+class Coordinates(object):
+    """
+    A location in character (x, y) coordinates.
+    """
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+    def __iter__(self):
+        return iter((x, y))
+
+
+
 class State(object):
     # FIXME: Interim.
 
@@ -20,29 +50,18 @@ class State(object):
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
 
-        # Character coordinate of left edge of display.
-        self.x0     = 0
-        # Row index of top edge of display.
-        self.y0     = 0
-        # Col and row index of the cursor position.
-        self.x      = 0
-        self.y      = 0
         # Window size.
-        self.sx     = 80
-        self.sy     = 25
+        self.size = Coordinates(80, 25)
+        # Scroll position, as visible upper-left coordinate.
+        self.scr = Coordinates(0, 0)
+        # Cursor position.
+        self.cur = Position(0, 0)
 
         # Decoration characters.
-        self.left_border    = "\u2551 "
-        self.separator      = " \u2502 "
-        self.right_border   = " \u2551"
-
-        self.__layout = None
-
-
-    def set_size(self, sx, sy):
-        self.sx = sx
-        self.sy = sy
-        self.__layout = None
+        self.left_border    = "\u2551"
+        self.separator      = "\u2502"
+        self.right_border   = "\u2551"
+        self.pad            = " "
 
 
     def get_fmt(self, col_id):
@@ -54,14 +73,8 @@ class State(object):
 
     @property
     def layout(self):
-        if self.__layout is None:
-            self.__layout = self.__compute_layout()
-        return self.__layout
-
-
-    def __compute_layout(self):
         """
-        Computes column layout.
+        The column layout.
 
         @return
           A sequence of `[x, item]` pairs describing layout, where `x` is the column
@@ -85,7 +98,7 @@ class State(object):
 
             fmt = self.get_fmt(col_id)
             layout.append([x0, col_id])
-            x0 += fmt.width
+            x0 += fmt.width + 2 * len(self.pad)
 
         if self.right_border:
             layout.append([x0, self.right_border])
@@ -97,31 +110,43 @@ class State(object):
 
 #-------------------------------------------------------------------------------
 
-def cursor_move(dx=0, dy=0):
-    def apply(state):
-        state.x += dx
-        state.x = max(0, min(len(state.order) - 1, state.x))
+def scroll_to(state, pos):
+    """
+    Adjusts the scroll position such that `pos` is visible.
+    """
+    # Find the col in the layout.
+    col_idx = state.order[pos.c]
+    for x, i in state.layout:
+        if i == col_idx:
+            break
+    else:
+        assert(False)
 
-        state.y += dy
-        # FIXME: Need to know max y / number of rows here.
-        state.y = max(0, state.y)
+    # Scroll right if necessary.
+    state.scr.x = max(
+        x + state.get_fmt(col_idx).width - state.size.x, 
+        state.scr.x)
+    # Scroll left if necessary.
+    state.scr.x = min(x, state.scr.x)
 
-        col_idx = state.order[state.x]
-        for x, i in state.layout:
-            if i == col_idx:
-                logging.info("x={}".format(x))
-                # Scroll right if necessary.
-                state.x0 = max(
-                    x + state.get_fmt(col_idx).width - state.sx, state.x0)
-                # Scroll left if necessary.
-                state.x0 = min(x, state.x0)
-                break
-        else:
-            assert(False)
+    # Scroll up if necessary.
+    state.scr.y = min(state.cur.r, state.scr.y)
+    # Scroll down if necessary.
+    # FIXME: Need to know the vertical screen layout here.
+    state.scr.y = max(state.cur.r - state.size.y + 2, state.scr.y)
 
-        state.y0 = min(state.y, state.y0)
-        state.y0 = max(state.y - state.sy + 2, state.y0)
 
-    return apply
+def move_cur(state, dc=0, dr=0):
+    """
+    Moves the cursor position.
+
+    @param dc:
+      Change in col position.
+    @param dr:
+      Change in row position.
+    """
+    state.cur.c = max(0, min(len(state.order) - 1, state.cur.c + dc))
+    state.cur.r = max(0, state.cur.r + dr)
+    scroll_to(state, state.cur)
 
 
