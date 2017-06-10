@@ -20,15 +20,15 @@ def render(win, model, state):
 
     # Truncate to window size and position.
     layout_x = [ x for x, _ in layout ]
-    i0 = bisect_right(layout_x, state.x0) - 1
-    i1 = bisect_left(layout_x, state.x0 + state.sx)
-    layout = [ (x - state.x0, l) for x, l in layout[i0 : i1] ]
+    i0 = bisect_right(layout_x, state.scr.x) - 1
+    i1 = bisect_left(layout_x, state.scr.x + state.size.x)
+    layout = [ (x - state.scr.x, l) for x, l in layout[i0 : i1] ]
 
     # Now, draw.
-    rows = min(state.sy - 1, model.num_rows - state.y0)
+    rows = min(state.size.y - 1, model.num_rows - state.scr.y)
     for r in range(rows):
         win.move(r, 0)
-        idx = state.y0 + r
+        idx = state.scr.y + r
         for x, v in layout:
             if isinstance(v, int):
                 # Got a col ID.
@@ -38,13 +38,13 @@ def render(win, model, state):
             
             if x < 0:
                 val = val[-x :]
-            if x + len(val) >= state.sx:
-                val = val[: state.sx - x]
+            if x + len(val) >= state.size.x:
+                val = val[: state.size.x - x]
 
             attr = (
-                     Attrs.cur_pos if v == state.x and idx == state.y
-                else Attrs.cur_col if v == state.x
-                else Attrs.cur_row if                  idx == state.y
+                     Attrs.cur_pos if v == state.cur.x and idx == state.cur.y
+                else Attrs.cur_col if v == state.cur.x
+                else Attrs.cur_row if                      idx == state.cur.y
                 else Attrs.normal
             )
             win.addstr(val, attr)
@@ -56,9 +56,9 @@ def advance_column(model, state, forward=True):
     xs = [ x for x, i in layout if isinstance(i, int) ]
 
     if forward:
-        return xs[min(bisect_right(xs, state.x0), len(xs) - 1)]
+        return xs[min(bisect_right(xs, state.scr.x), len(xs) - 1)]
     else:
-        return xs[max(bisect_right(xs, state.x0 - 1) - 1, 0)]
+        return xs[max(bisect_right(xs, state.scr.x - 1) - 1, 0)]
     
 
 
@@ -131,8 +131,7 @@ def main():
     scroll_step = 12
 
     with log.replay(), curses_screen() as stdscr:
-        sy, sx = stdscr.getmaxyx()
-        state.set_size(sx, sy)
+        state.size.y, state.size.x = stdscr.getmaxyx()
         render(stdscr, model, state)
 
         while True:

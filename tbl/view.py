@@ -10,6 +10,13 @@ def choose_fmt(arr):
     return fmt
 
 
+class Coordinates(object):
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
 class State(object):
     # FIXME: Interim.
 
@@ -20,28 +27,18 @@ class State(object):
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
 
-        # Character coordinate of left edge of display.
-        self.x0     = 0
-        # Row index of top edge of display.
-        self.y0     = 0
+        # Scroll position, as visible upper-left coordinate.
+        self.scr = Coordinates(0, 0)
         # Col and row index of the cursor position.
-        self.x      = 0
-        self.y      = 0
+        self.cur = Coordinates(0, 0)
         # Window size.
-        self.sx     = 80
-        self.sy     = 25
+        self.size = Coordinates(80, 25)
 
         # Decoration characters.
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
 
-        self.__layout = None
-
-
-    def set_size(self, sx, sy):
-        self.sx = sx
-        self.sy = sy
         self.__layout = None
 
 
@@ -54,9 +51,8 @@ class State(object):
 
     @property
     def layout(self):
-        if self.__layout is None:
-            self.__layout = self.__compute_layout()
-        return self.__layout
+        # FIXME: ...?
+        return self.__compute_layout()
 
 
     def __compute_layout(self):
@@ -97,30 +93,37 @@ class State(object):
 
 #-------------------------------------------------------------------------------
 
+def scroll_to_cursor(state):
+    """
+    Adjusts the scroll position such that the cursor is visible.
+    """
+
+
 def cursor_move(dx=0, dy=0):
     def apply(state):
-        state.x += dx
-        state.x = max(0, min(len(state.order) - 1, state.x))
+        # Move horizontally.
+        state.cur.x = max(0, min(len(state.order) - 1, state.cur.x + dx))
 
-        state.y += dy
+        # Move vertically.
+        state.cur.y = max(0, state.cur.y + dy)
         # FIXME: Need to know max y / number of rows here.
-        state.y = max(0, state.y)
 
-        col_idx = state.order[state.x]
+        col_idx = state.order[state.cur.x]
         for x, i in state.layout:
             if i == col_idx:
                 logging.info("x={}".format(x))
                 # Scroll right if necessary.
-                state.x0 = max(
-                    x + state.get_fmt(col_idx).width - state.sx, state.x0)
+                state.scr.x = max(
+                    x + state.get_fmt(col_idx).width - state.size.x, 
+                    state.scr.x)
                 # Scroll left if necessary.
-                state.x0 = min(x, state.x0)
+                state.scr.x = min(x, state.scr.x)
                 break
         else:
             assert(False)
 
-        state.y0 = min(state.y, state.y0)
-        state.y0 = max(state.y - state.sy + 2, state.y0)
+        state.scr.y = min(state.cur.y, state.scr.y)
+        state.scr.y = max(state.cur.y - state.size.y + 2, state.scr.y)
 
     return apply
 
