@@ -10,11 +10,34 @@ def choose_fmt(arr):
     return fmt
 
 
+class Position(object):
+    """
+    A location in (col, row) index coordinates.
+    """
+
+    def __init__(self, c, r):
+        self.c = c
+        self.r = r
+
+
+    def __iter__(self):
+        return iter((c, r))
+
+
+
 class Coordinates(object):
+    """
+    A location in character (x, y) coordinates.
+    """
 
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+
+    def __iter__(self):
+        return iter((x, y))
+
 
 
 class State(object):
@@ -29,8 +52,8 @@ class State(object):
 
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
-        # Col and row index of the cursor position.
-        self.cur = Coordinates(0, 0)
+        # Cursor position.
+        self.cur = Position(0, 0)
         # Window size.
         self.size = Coordinates(80, 25)
 
@@ -38,8 +61,6 @@ class State(object):
         self.left_border    = "\u2551 "
         self.separator      = " \u2502 "
         self.right_border   = " \u2551"
-
-        self.__layout = None
 
 
     def get_fmt(self, col_id):
@@ -51,13 +72,8 @@ class State(object):
 
     @property
     def layout(self):
-        # FIXME: ...?
-        return self.__compute_layout()
-
-
-    def __compute_layout(self):
         """
-        Computes column layout.
+        The column layout.
 
         @return
           A sequence of `[x, item]` pairs describing layout, where `x` is the column
@@ -93,38 +109,36 @@ class State(object):
 
 #-------------------------------------------------------------------------------
 
-def scroll_to_cursor(state):
+def scroll_to(state, pos):
     """
-    Adjusts the scroll position such that the cursor is visible.
+    Adjusts the scroll position such that `pos` is visible.
     """
+    # Find the col in the layout.
+    col_idx = state.order[pos.c]
+    for x, i in state.layout:
+        if i == col_idx:
+            break
+    else:
+        assert(False)
+
+    # Scroll right if necessary.
+    state.scr.x = max(
+        x + state.get_fmt(col_idx).width - state.size.x, 
+        state.scr.x)
+    # Scroll left if necessary.
+    state.scr.x = min(x, state.scr.x)
+
+    # Scroll up if necessary.
+    state.scr.y = min(state.cur.r, state.scr.y)
+    # Scroll down if necessary.
+    # FIXME: Need to know the vertical screen layout here.
+    state.scr.y = max(state.cur.r - state.size.y + 2, state.scr.y)
 
 
-def cursor_move(dx=0, dy=0):
-    def apply(state):
-        # Move horizontally.
-        state.cur.x = max(0, min(len(state.order) - 1, state.cur.x + dx))
 
-        # Move vertically.
-        state.cur.y = max(0, state.cur.y + dy)
-        # FIXME: Need to know max y / number of rows here.
-
-        col_idx = state.order[state.cur.x]
-        for x, i in state.layout:
-            if i == col_idx:
-                logging.info("x={}".format(x))
-                # Scroll right if necessary.
-                state.scr.x = max(
-                    x + state.get_fmt(col_idx).width - state.size.x, 
-                    state.scr.x)
-                # Scroll left if necessary.
-                state.scr.x = min(x, state.scr.x)
-                break
-        else:
-            assert(False)
-
-        state.scr.y = min(state.cur.y, state.scr.y)
-        state.scr.y = max(state.cur.y - state.size.y + 2, state.scr.y)
-
-    return apply
+def cursor_move(state, dx=0, dy=0):
+    state.cur.c = max(0, min(len(state.order) - 1, state.cur.c + dx))
+    state.cur.r = max(0, state.cur.r + dy)
+    scroll_to(state, state.cur)
 
 

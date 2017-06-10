@@ -42,9 +42,9 @@ def render(win, model, state):
                 val = val[: state.size.x - x]
 
             attr = (
-                     Attrs.cur_pos if v == state.cur.x and idx == state.cur.y
-                else Attrs.cur_col if v == state.cur.x
-                else Attrs.cur_row if                      idx == state.cur.y
+                     Attrs.cur_pos if v == state.cur.c and idx == state.cur.r
+                else Attrs.cur_col if v == state.cur.c
+                else Attrs.cur_row if                      idx == state.cur.r
                 else Attrs.normal
             )
             win.addstr(val, attr)
@@ -137,33 +137,15 @@ def main():
         while True:
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
-            op = None
 
             if c == curses.KEY_LEFT:
-                op = view.cursor_move(dx=-1)
+                view.cursor_move(state, dx=-1)
             elif c == curses.KEY_RIGHT:
-                op = view.cursor_move(dx=+1)
+                view.cursor_move(state, dx=+1)
             elif c == curses.KEY_UP:
-                op = view.cursor_move(dy=-1)
+                view.cursor_move(state, dy=-1)
             elif c == curses.KEY_DOWN:
-                op = view.cursor_move(dy=+1)
-
-            elif c == ord('h'):
-                op = view.cursor_move(dx=-scroll_step)
-            elif c == ord('H'):
-                op = view.cursor_move(dx=-1)
-            elif c == ord('l'):
-                op = view.cursor_move(dx=+scroll_step)
-            elif c == ord('L'):
-                op = view.cursor_move(dx=+1)
-            elif c == ord('k'):
-                op = view.cursor_move(dy=-scroll_step)
-            elif c == ord('K'):
-                op = view.cursor_move(dy=-1)
-            elif c == ord('j'):
-                op = view.cursor_move(dy=+scroll_step)
-            elif c == ord('J'):
-                op = view.cursor_move(dy=+1)
+                view.cursor_move(state, dy=+1)
 
             elif c == ord('q'):
                 break
@@ -174,9 +156,6 @@ def main():
 
             else:
                 continue
-
-            if op is not None:
-                op(state)
 
             stdscr.erase()
             render(stdscr, model, state)
