@@ -1,4 +1,5 @@
 import itertools
+import numpy as np
 
 #-------------------------------------------------------------------------------
 
@@ -30,6 +31,7 @@ class Model:
         @param position
           Insertion position into the column order; `None` for end.
         """
+        arr = np.asarray(arr)
         if position is None:
             # Insert at end.
             position = len(self.__cols)
