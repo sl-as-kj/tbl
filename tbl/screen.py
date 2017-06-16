@@ -8,6 +8,7 @@ import sys
 from   . import view
 from   .lib import log
 from   .model import Model
+from   .text import palide
 
 #-------------------------------------------------------------------------------
 
@@ -22,6 +23,11 @@ def render(win, model, state):
     num_rows = min(state.size.y - 1, model.num_rows - state.scr.y) 
     # For the time being, we show a contiguous range of rows staritng at y.
     rows = np.arange(num_rows) + state.scr.y 
+
+    if state.show_header:
+        # Make room for the header.
+        rows[1 :] = rows[: -1]
+        rows[0] = -1
 
     pad = " " * state.pad
 
@@ -63,8 +69,13 @@ def render(win, model, state):
                     else Attrs.cur_row if              row == r
                     else Attrs.normal
                 )
-                text = (pad + fmt(arr[row]) + pad)[t0 : t1]
-                win.addstr(y, x, text, attr)
+                if row == -1:
+                    # Header.
+                    text = palide(model.get_col(col_idx).name, w)
+                    attr |= curses.A_UNDERLINE
+                else:
+                    text = (pad + fmt(arr[row]) + pad)
+                win.addstr(y, x, text[t0 : t1], attr)
 
         else:
             raise NotImplementedError("type: {!r}".format(type))

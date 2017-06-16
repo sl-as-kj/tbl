@@ -68,6 +68,8 @@ class State(object):
         # Cursor position.
         self.cur = Position(0, 0)
 
+        self.show_header = True
+
         # Decoration characters.
         self.left_border    = "\u2551"
         self.separator      = "\u2502"
