@@ -3,13 +3,6 @@ import numpy as np
 
 #-------------------------------------------------------------------------------
 
-def choose_fmt(arr):
-    width = max( len(str(a)) for a in arr )
-    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
-    fmt.width = width
-    return fmt
-
-
 class Position(object):
     """
     A location in (col, row) index coordinates.
@@ -20,8 +13,12 @@ class Position(object):
         self.r = r
 
 
+    def __repr__(self):
+        return "{}({!r}, {!r})".format(self.__class__.__name__, self.c, self.r)
+
+
     def __iter__(self):
-        return iter((c, r))
+        return iter((self.c, self.r))
 
 
 
@@ -35,9 +32,23 @@ class Coordinates(object):
         self.y = y
 
 
-    def __iter__(self):
-        return iter((x, y))
+    def __repr__(self):
+        return "{}({!r}, {!r})".format(self.__class__.__name__, self.x, self.y)
 
+
+    def __iter__(self):
+        return iter((self.x, self.y))
+
+
+
+#-------------------------------------------------------------------------------
+
+# FIXME: Temporary
+def choose_fmt(arr):
+    width = max( len(str(a)) for a in arr )
+    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
+    fmt.width = width
+    return fmt
 
 
 class State(object):
@@ -61,7 +72,7 @@ class State(object):
         self.left_border    = "\u2551"
         self.separator      = "\u2502"
         self.right_border   = "\u2551"
-        self.pad            = " "
+        self.pad            = 1
 
 
     def get_fmt(self, col_id):
@@ -71,44 +82,87 @@ class State(object):
         return self.fmt[col_id]
 
 
-    @property
-    def layout(self):
-        """
-        The column layout.
+#-------------------------------------------------------------------------------
+# Layout
 
-        @return
-          A sequence of `[x, item]` pairs describing layout, where `x` is the column
-          position and `item` is either a column ID or a string literal.
-        """
-        layout = []
-        x0 = 0
+def lay_out_columns(state):
+    """
+    Computes the column layout.
 
-        if self.left_border:
-            layout.append([x0, self.left_border])
-            x0 += len(self.left_border)
+    Generates `x, w, type, z` pairs, where,
+    - `x` is the starting character position
+    - `w` is the width
+    - `type` is `"text"` or `"col"`
+    - `z` is a string or a column position
+    """
+    x = 0
 
-        first_col = True
+    if state.left_border:
+        w = len(state.left_border)
+        yield x, w, "text", state.left_border
+        x += w
 
-        for col_id in self.order:
-            if first_col:
-                first_col = False
-            elif self.separator:
-                layout.append([x0, self.separator])
-                x0 += len(self.separator)
+    first = True
+    for c, col_id in enumerate(state.order):
+        if first:
+            first = False
+        elif state.separator:
+            w = len(state.separator)
+            yield x, w, "text", state.separator
+            x += w
 
-            fmt = self.get_fmt(col_id)
-            layout.append([x0, col_id])
-            x0 += fmt.width + 2 * len(self.pad)
+        fmt = state.get_fmt(col_id)
+        w = fmt.width + 2 * state.pad
+        yield x, w, "col", c
+        x += w
 
-        if self.right_border:
-            layout.append([x0, self.right_border])
-            x0 += len(self.right_border)
+    if state.right_border:
+        w = len(state.right_border)
+        yield x, w, "text", state.right_border
+        x += w
 
-        return layout
 
+def shift_layout(layout, x0, x_size):
+    """
+    Shifts and filters the layout for scroll position and screen width.
+
+    Shifts `x` positions by `x0`, and filters out entries that are either
+    entirely left of `x0` or entirely right of `x0 + x_size`.
+    """
+    for x, w, type, val in layout:
+        x -= x0
+        if x + w <= 0:
+            continue
+        elif x >= x_size:
+            break
+        else:
+            yield x, w, type, val
+
+
+def locate_in_layout(layout, x0):
+    """
+    Returns the layout entry containing an x coordinate.
+    """
+    for x, w, type, val in layout:
+        if x <= x0 < x:
+            return x, w, type, val
+    else:
+        return None
+
+
+def find_col_in_layout(layout, col_id):
+    """
+    Returns the layout entry for a column.
+    """
+    for x, w, type, val in layout:
+        if type == "col" and val == col_id:
+            return x, w, type, val
+    else:
+        return None
 
 
 #-------------------------------------------------------------------------------
+# Actions
 
 def scroll_to(state, pos):
     """
@@ -116,16 +170,11 @@ def scroll_to(state, pos):
     """
     # Find the col in the layout.
     col_idx = state.order[pos.c]
-    for x, i in state.layout:
-        if i == col_idx:
-            break
-    else:
-        assert(False)
+    
+    x, w, _, _ = find_col_in_layout(lay_out_columns(state), col_idx)
 
     # Scroll right if necessary.
-    state.scr.x = max(
-        x + state.get_fmt(col_idx).width - state.size.x, 
-        state.scr.x)
+    state.scr.x = max(x + w - state.size.x, state.scr.x)
     # Scroll left if necessary.
     state.scr.x = min(x, state.scr.x)
 

@@ -1,8 +1,8 @@
-from   bisect import *
 from   contextlib import contextmanager
 import curses
 import functools
 import logging
+import numpy as np
 import sys
 
 from   . import view
@@ -15,52 +15,59 @@ def render(win, model, state):
     """
     Renders `model` with view `state` in curses `win`.
     """
-    # Get the column layout.
-    layout = state.layout
+    layout = view.lay_out_columns(state)
+    layout = view.shift_layout(layout, state.scr.x, state.size.x)
 
-    # Truncate to window size and position.
-    layout_x = [ x for x, _ in layout ]
-    i0 = bisect_right(layout_x, state.scr.x) - 1
-    i1 = bisect_left(layout_x, state.scr.x + state.size.x)
-    layout = [ (x - state.scr.x, l) for x, l in layout[i0 : i1] ]
+    # Row numbers to draw.  
+    num_rows = min(state.size.y - 1, model.num_rows - state.scr.y) 
+    # For the time being, we show a contiguous range of rows staritng at y.
+    rows = np.arange(num_rows) + state.scr.y 
+
+    pad = " " * state.pad
 
     # Now, draw.
-    rows = min(state.size.y - 1, model.num_rows - state.scr.y)
-    for r in range(rows):
-        win.move(r, 0)
-        idx = state.scr.y + r
-        for x, v in layout:
-            if isinstance(v, int):
-                # Got a col ID.
-                val = state.get_fmt(v)(model.get_col(v).arr[idx])
-                val = state.pad + val + state.pad
-            else:
-                val = v
-            
-            if x < 0:
-                val = val[-x :]
-            if x + len(val) >= state.size.x:
-                val = val[: state.size.x - x]
+    for x, w, type, z in layout:
+        c, r = state.cur
 
-            attr = (
-                     Attrs.cur_pos if v == state.cur.c and idx == state.cur.r
-                else Attrs.cur_col if v == state.cur.c
-                else Attrs.cur_row if                      idx == state.cur.r
-                else Attrs.normal
-            )
-            win.addstr(val, attr)
+        # The item may be only partially visible.  Compute the start and stop
+        # slice bounds to trim it to the screen.
+        if x < 0:
+            t0 = -x
+            x = 0
+        else:
+            t0 = None
+        if x + w >= state.size.x:
+            t1 = state.size.x - x
+        else:
+            t1 = None
 
+        if type == "text":
+            # A fixed text item.
+            text = z[t0 : t1]
+            if len(z) > 0:
+                for y, row in enumerate(rows):
+                    attr =  Attrs.cur_row if row == r else Attrs.normal
+                    win.addstr(y, x, text, attr)
 
-def advance_column(model, state, forward=True):
-    layout = state.layout
-    # Select columns only.
-    xs = [ x for x, i in layout if isinstance(i, int) ]
+        elif type == "col":
+            # A column from the model.
+            col = z
+            col_idx = state.order[col]
+            fmt = state.get_fmt(col_idx)
+            arr = model.get_col(col_idx).arr
 
-    if forward:
-        return xs[min(bisect_right(xs, state.scr.x), len(xs) - 1)]
-    else:
-        return xs[max(bisect_right(xs, state.scr.x - 1) - 1, 0)]
-    
+            for y, row in enumerate(rows):
+                attr = (
+                         Attrs.cur_pos if col == c and row == r
+                    else Attrs.cur_col if col == c
+                    else Attrs.cur_row if              row == r
+                    else Attrs.normal
+                )
+                text = (pad + fmt(arr[row]) + pad)[t0 : t1]
+                win.addstr(y, x, text, attr)
+
+        else:
+            raise NotImplementedError("type: {!r}".format(type))
 
 
 @contextmanager
