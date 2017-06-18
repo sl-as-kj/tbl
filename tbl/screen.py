@@ -142,10 +142,10 @@ def load_test(path):
     return model, state
 
 
-def main():
+def main(filename=None):
     logging.basicConfig(filename="log", level=logging.INFO)
 
-    model, state = load_test(sys.argv[1])
+    model, state = load_test(filename or sys.argv[1])
 
     with log.replay(), curses_screen() as stdscr:
         state.size.y, state.size.x = stdscr.getmaxyx()
@@ -163,6 +163,12 @@ def main():
                 view.move_cur(state, dr=-1)
             elif c == curses.KEY_DOWN:
                 view.move_cur(state, dr=+1)
+
+            elif c == ord('D'):
+                model.delete_row(state.cur.r, set_undo=True)
+
+            elif c == ord('Z'):
+                model.undo()
 
             elif c == ord('q'):
                 break
