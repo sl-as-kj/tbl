@@ -21,14 +21,18 @@ def pad(string, length, pad=" ", pos=1.0):
     if left > 0:
         string = pad * (left // pad_len) + pad[: left % pad_len] + string
     if right > 0:
-        string = string + pad[-(right % pad_len) :] + pad * (right // pad_len)
+        string = (
+            string 
+            + pad[pad_len - (right % pad_len) :] 
+            + pad * (right // pad_len)
+        )
     return string
 
 
 _pad = pad
 
 
-def elide(string, length, ellipsis=u"\u2026", pos=0.7):
+def elide(string, length, ellipsis=u"\u2026", pos=1.0):
     """
     Elides characters if necessary to fit `string` in `length` characters.
 
@@ -57,7 +61,7 @@ def elide(string, length, ellipsis=u"\u2026", pos=0.7):
 
 
 def palide(string, length, ellipsis=u"\u2026", pad=" ", pad_pos=1.0, 
-           elide_pos=0.7):
+           elide_pos=1.0):
     """
     A combination of `elide` and `pad`.
     """
