@@ -51,7 +51,7 @@ def choose_fmt(arr):
     return fmt
 
 
-class State(object):
+class View(object):
     # FIXME: Interim.
 
     def __init__(self, model):
@@ -87,7 +87,7 @@ class State(object):
 #-------------------------------------------------------------------------------
 # Layout
 
-def lay_out_columns(state):
+def lay_out_columns(view):
     """
     Computes the column layout.
 
@@ -99,28 +99,28 @@ def lay_out_columns(state):
     """
     x = 0
 
-    if state.left_border:
-        w = len(state.left_border)
-        yield x, w, "text", state.left_border
+    if view.left_border:
+        w = len(view.left_border)
+        yield x, w, "text", view.left_border
         x += w
 
     first = True
-    for c, col_id in enumerate(state.order):
+    for c, col_id in enumerate(view.order):
         if first:
             first = False
-        elif state.separator:
-            w = len(state.separator)
-            yield x, w, "text", state.separator
+        elif view.separator:
+            w = len(view.separator)
+            yield x, w, "text", view.separator
             x += w
 
-        fmt = state.get_fmt(col_id)
-        w = fmt.width + 2 * state.pad
+        fmt = view.get_fmt(col_id)
+        w = fmt.width + 2 * view.pad
         yield x, w, "col", c
         x += w
 
-    if state.right_border:
-        w = len(state.right_border)
-        yield x, w, "text", state.right_border
+    if view.right_border:
+        w = len(view.right_border)
+        yield x, w, "text", view.right_border
         x += w
 
 
@@ -166,28 +166,28 @@ def find_col_in_layout(layout, col_id):
 #-------------------------------------------------------------------------------
 # Actions
 
-def scroll_to(state, pos):
+def scroll_to(view, pos):
     """
     Adjusts the scroll position such that `pos` is visible.
     """
     # Find the col in the layout.
-    col_idx = state.order[pos.c]
+    col_idx = view.order[pos.c]
     
-    x, w, _, _ = find_col_in_layout(lay_out_columns(state), col_idx)
+    x, w, _, _ = find_col_in_layout(lay_out_columns(view), col_idx)
 
     # Scroll right if necessary.
-    state.scr.x = max(x + w - state.size.x, state.scr.x)
+    view.scr.x = max(x + w - view.size.x, view.scr.x)
     # Scroll left if necessary.
-    state.scr.x = min(x, state.scr.x)
+    view.scr.x = min(x, view.scr.x)
 
     # Scroll up if necessary.
-    state.scr.y = min(state.cur.r, state.scr.y)
+    view.scr.y = min(view.cur.r, view.scr.y)
     # Scroll down if necessary.
     # FIXME: Need to know the vertical screen layout here.
-    state.scr.y = max(state.cur.r - state.size.y + 2, state.scr.y)
+    view.scr.y = max(view.cur.r - view.size.y + 2, view.scr.y)
 
 
-def move_cur(state, dc=0, dr=0):
+def move_cur(view, dc=0, dr=0):
     """
     Moves the cursor position.
 
@@ -196,9 +196,9 @@ def move_cur(state, dc=0, dr=0):
     @param dr:
       Change in row position.
     """
-    state.cur.c = max(0, min(len(state.order) - 1, state.cur.c + dc))
-    state.cur.r = max(0, state.cur.r + dr)
-    scroll_to(state, state.cur)
+    view.cur.c = max(0, min(len(view.order) - 1, view.cur.c + dc))
+    view.cur.r = max(0, view.cur.r + dr)
+    scroll_to(view, view.cur)
 
 
 

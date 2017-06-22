@@ -5,35 +5,35 @@ import logging
 import numpy as np
 import sys
 
-from   . import view
+from   . import view as vw
 from   .lib import log
 from   .model import Model
 from   .text import palide
 
 #-------------------------------------------------------------------------------
 
-def render(win, model, state):
+def render(win, model, view):
     """
-    Renders `model` with view `state` in curses `win`.
+    Renders `model` with view `view` in curses `win`.
     """
-    layout = view.lay_out_columns(state)
-    layout = view.shift_layout(layout, state.scr.x, state.size.x)
+    layout = vw.lay_out_columns(view)
+    layout = vw.shift_layout(layout, view.scr.x, view.size.x)
 
     # Row numbers to draw.  
-    num_rows = min(state.size.y, model.num_rows - state.scr.y) 
+    num_rows = min(view.size.y, model.num_rows - view.scr.y) 
     # For the time being, we show a contiguous range of rows starting at y.
-    rows = np.arange(num_rows) + state.scr.y 
+    rows = np.arange(num_rows) + view.scr.y 
 
-    if state.show_header:
+    if view.show_header:
         # Make room for the header.
         rows[1 :] = rows[: -1]
         rows[0] = -1
 
-    pad = " " * state.pad
+    pad = " " * view.pad
 
     # Now, draw.
     for x, w, type, z in layout:
-        c, r = state.cur
+        c, r = view.cur
 
         # The item may be only partially visible.  Compute the start and stop
         # slice bounds to trim it to the screen.
@@ -42,8 +42,8 @@ def render(win, model, state):
             x = 0
         else:
             t0 = None
-        if x + w >= state.size.x:
-            t1 = state.size.x - x
+        if x + w >= view.size.x:
+            t1 = view.size.x - x
         else:
             t1 = None
 
@@ -58,8 +58,8 @@ def render(win, model, state):
         elif type == "col":
             # A column from the model.
             col = z
-            col_idx = state.order[col]
-            fmt = state.get_fmt(col_idx)
+            col_idx = view.order[col]
+            fmt = view.get_fmt(col_idx)
             arr = model.get_col(col_idx).arr
 
             for y, row in enumerate(rows):
@@ -86,7 +86,7 @@ def curses_screen():
     """
     Curses context manager.
 
-    Returns the screen window on entry.  Restores the terminal state on exit.
+    Returns the screen window on entry.  Restores the terminal view on exit.
     """
     stdscr = curses.initscr()
     curses.noecho()
@@ -138,36 +138,36 @@ def load_test(path):
     model = Model()
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
-    state = view.State(model)
-    return model, state
+    view = vw.View(model)
+    return model, view
 
 
 def main(filename=None):
     logging.basicConfig(filename="log", level=logging.INFO)
 
-    model, state = load_test(filename or sys.argv[1])
+    model, view = load_test(filename or sys.argv[1])
 
     with log.replay(), curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
-        state.size.x = sx
-        state.size.y = sy - 2
-        render(stdscr, model, state)
+        view.size.x = sx
+        view.size.y = sy - 2
+        render(stdscr, model, view)
 
         while True:
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
 
             if c == curses.KEY_LEFT:
-                view.move_cur(state, dc=-1)
+                vw.move_cur(view, dc=-1)
             elif c == curses.KEY_RIGHT:
-                view.move_cur(state, dc=+1)
+                vw.move_cur(view, dc=+1)
             elif c == curses.KEY_UP:
-                view.move_cur(state, dr=-1)
+                vw.move_cur(view, dr=-1)
             elif c == curses.KEY_DOWN:
-                view.move_cur(state, dr=+1)
+                vw.move_cur(view, dr=+1)
 
             elif c == ord('D'):
-                model.delete_row(state.cur.r, set_undo=True)
+                model.delete_row(view.cur.r, set_undo=True)
 
             elif c == ord('Z'):
                 model.undo()
@@ -177,14 +177,14 @@ def main(filename=None):
 
             elif c == curses.KEY_RESIZE:
                 sy, sx = stdscr.getmaxyx()
-                state.size.x = sx
-                state.size.y = sy - 2
+                view.size.x = sx
+                view.size.y = sy - 2
 
             else:
                 continue
 
             stdscr.erase()
-            render(stdscr, model, state)
+            render(stdscr, model, view)
 
 
 
