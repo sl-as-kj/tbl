@@ -20,8 +20,8 @@ def render(win, model, state):
     layout = view.shift_layout(layout, state.scr.x, state.size.x)
 
     # Row numbers to draw.  
-    num_rows = min(state.size.y - 1, model.num_rows - state.scr.y) 
-    # For the time being, we show a contiguous range of rows staritng at y.
+    num_rows = min(state.size.y, model.num_rows - state.scr.y) 
+    # For the time being, we show a contiguous range of rows starting at y.
     rows = np.arange(num_rows) + state.scr.y 
 
     if state.show_header:
@@ -148,7 +148,9 @@ def main(filename=None):
     model, state = load_test(filename or sys.argv[1])
 
     with log.replay(), curses_screen() as stdscr:
-        state.size.y, state.size.x = stdscr.getmaxyx()
+        sy, sx = stdscr.getmaxyx()
+        state.size.x = sx
+        state.size.y = sy - 2
         render(stdscr, model, state)
 
         while True:
@@ -175,7 +177,8 @@ def main(filename=None):
 
             elif c == curses.KEY_RESIZE:
                 sy, sx = stdscr.getmaxyx()
-                state.set_size(sx, sy)
+                state.size.x = sx
+                state.size.y = sy - 2
 
             else:
                 continue
