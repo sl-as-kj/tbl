@@ -8,11 +8,48 @@ import sys
 from   . import view as vw
 from   .lib import log
 from   .model import Model
-from   .text import palide
+from   .text import pad, palide
 
 #-------------------------------------------------------------------------------
 
-def render(win, model, view):
+class Screen:
+    """
+    The display screen, including the table view and UI components.
+    """
+
+    def __init__(self, view):
+        self.size = vw.Coordinates(80, 25)
+        self.view = view
+        self.status = "tbl " * 5
+        self.status_size = 1
+        self.cmd_size = 1
+
+
+
+def set_size(screen, sx, sy):
+    screen.size.x = sx
+    screen.size.y = sy
+    screen.view.size.x = sx
+    screen.view.size.y = sy - screen.status_size - screen.cmd_size
+
+
+
+def render_screen(win, screen, model):
+    x = screen.size.x
+    y = screen.size.y - screen.status_size - screen.cmd_size
+    
+    # Draw the status bar.
+    status = screen.status.splitlines()
+    assert len(status) == screen.status_size
+    for line in status:
+        logging.info("line: {!r}".format(line))
+        win.addstr(y, 0, pad(line[: x], x), Attrs.status)
+        y += 1
+
+    render_view(win, screen.view, model)
+
+
+def render_view(win, view, model):
     """
     Renders `model` with view `view` in curses `win`.
     """
@@ -71,7 +108,7 @@ def render(win, model, view):
                 )
                 if row == -1:
                     # Header.
-                    text = palide(model.get_col(col_idx).name, w)
+                    text = palide(model.get_col(col_idx).name, w, elide_pos=0.7)
                     attr |= curses.A_UNDERLINE
                 else:
                     text = (pad + fmt(arr[row]) + pad)
@@ -125,6 +162,8 @@ def init_attrs():
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
     Attrs.cur_row = curses.color_pair(3)
 
+    Attrs.status = Attrs.normal | curses.A_REVERSE
+
 
 #-------------------------------------------------------------------------------
 
@@ -146,14 +185,18 @@ def main(filename=None):
     logging.basicConfig(filename="log", level=logging.INFO)
 
     model, view = load_test(filename or sys.argv[1])
+    screen = Screen(view)
 
     with log.replay(), curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
-        view.size.x = sx
-        view.size.y = sy - 2
-        render(stdscr, model, view)
+        set_size(screen, sx, sy)
 
         while True:
+            screen.status = vw.get_status(view, model, view.size.y)
+
+            stdscr.erase()
+            render_screen(stdscr, screen, model)
+
             c = stdscr.getch()
             logging.info("getch() -> {!r}".format(c))
 
@@ -177,14 +220,10 @@ def main(filename=None):
 
             elif c == curses.KEY_RESIZE:
                 sy, sx = stdscr.getmaxyx()
-                view.size.x = sx
-                view.size.y = sy - 2
+                set_size(screen, sx, sy)
 
             else:
                 continue
-
-            stdscr.erase()
-            render(stdscr, model, view)
 
 
 

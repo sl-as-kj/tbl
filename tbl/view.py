@@ -163,6 +163,16 @@ def find_col_in_layout(layout, col_id):
         return None
 
 
+def get_status(view, model, sy):
+    """
+    Writes the status bar text.
+    """
+    col = model.get_col(view.order[view.cur.c])
+    val = col.arr[view.cur.r]
+    return "row {:6d}, {} col '{}' value {!r}".format(
+        view.cur.r, col.arr.dtype, col.name, val)
+
+
 #-------------------------------------------------------------------------------
 # Actions
 
