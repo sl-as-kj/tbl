@@ -6,6 +6,7 @@ import numpy as np
 import sys
 
 from   . import view as vw
+from   .curses_keyboard import get_key
 from   .lib import log
 from   .model import Model
 from   .text import pad, palide
@@ -130,12 +131,13 @@ def curses_screen():
     stdscr.keypad(True)
     curses.cbreak()
     curses.curs_set(False)
-
+    curses.raw()
     init_attrs()
 
     try:
         yield stdscr
     finally:
+        curses.noraw()
         curses.curs_set(True)
         curses.nocbreak()
         stdscr.keypad(False)
@@ -197,27 +199,28 @@ def main(filename=None):
             stdscr.erase()
             render_screen(stdscr, screen, model)
 
-            c = stdscr.getch()
+            c = get_key(stdscr)
             logging.info("getch() -> {!r}".format(c))
 
-            if c == curses.KEY_LEFT:
+            if c == "LEFT":
                 vw.move_cur(view, dc=-1)
-            elif c == curses.KEY_RIGHT:
+            elif c == "RIGHT":
                 vw.move_cur(view, dc=+1)
-            elif c == curses.KEY_UP:
+            elif c == "UP":
                 vw.move_cur(view, dr=-1)
-            elif c == curses.KEY_DOWN:
+            elif c == "DOWN":
                 vw.move_cur(view, dr=+1)
 
-            elif c == ord('D'):
+            elif c == "C-k":
                 model.delete_row(view.cur.r, set_undo=True)
 
-            elif c == ord('Z'):
+            elif c == "C-z":
                 model.undo()
 
-            elif c == ord('q'):
+            elif c == "q":
                 break
 
+            # FIXME:
             elif c == curses.KEY_RESIZE:
                 sy, sx = stdscr.getmaxyx()
                 set_size(screen, sx, sy)
