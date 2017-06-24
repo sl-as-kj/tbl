@@ -43,7 +43,6 @@ def render_screen(win, screen, model):
     status = screen.status.splitlines()
     assert len(status) == screen.status_size
     for line in status:
-        logging.info("line: {!r}".format(line))
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
@@ -132,6 +131,15 @@ def curses_screen():
     curses.cbreak()
     curses.curs_set(False)
     curses.raw()
+
+    # Enable mouse events.
+    mouse_mask = curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
+    new_mask, _ = curses.mousemask(mouse_mask)
+    if new_mask != mouse_mask:
+        logging.warning(
+            "problem with mouse support: {:x} {:x}"
+            .format(mouse_mask, new_mask))
+
     init_attrs()
 
     try:
@@ -183,51 +191,63 @@ def load_test(path):
     return model, view
 
 
-def main(filename=None):
-    logging.basicConfig(filename="log", level=logging.INFO)
+def next_event(model, view, screen, stdscr):
+    """
+    Waits for, then processes the next UI event.
 
-    model, view = load_test(filename or sys.argv[1])
-    screen = Screen(view)
+    @raise KeyboardInterrupt
+      The program should terminate.
+    """
+    key, arg = get_key(stdscr)
+    logging.info("key: {!r} {!r}".format(key, arg))
 
+    if key == "LEFT":
+        vw.move_cur(view, dc=-1)
+    elif key == "RIGHT":
+        vw.move_cur(view, dc=+1)
+    elif key == "UP":
+        vw.move_cur(view, dr=-1)
+    elif key == "DOWN":
+        vw.move_cur(view, dr=+1)
+
+    elif key == "C-k":
+        model.delete_row(view.cur.r, set_undo=True)
+
+    elif key == "C-z":
+        model.undo()
+
+    elif key == "q":
+        raise KeyboardInterrupt()
+
+    elif key == "RESIZE":
+        sx, sy = arg
+        set_size(screen, sx, sy)
+
+
+def main_loop(model, view, screen):
     with log.replay(), curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
         set_size(screen, sx, sy)
 
         while True:
+            # Construct the status bar contents.
             screen.status = vw.get_status(view, model, view.size.y)
-
+            # Render the screen.
             stdscr.erase()
             render_screen(stdscr, screen, model)
-
-            c = get_key(stdscr)
-            logging.info("getch() -> {!r}".format(c))
-
-            if c == "LEFT":
-                vw.move_cur(view, dc=-1)
-            elif c == "RIGHT":
-                vw.move_cur(view, dc=+1)
-            elif c == "UP":
-                vw.move_cur(view, dr=-1)
-            elif c == "DOWN":
-                vw.move_cur(view, dr=+1)
-
-            elif c == "C-k":
-                model.delete_row(view.cur.r, set_undo=True)
-
-            elif c == "C-z":
-                model.undo()
-
-            elif c == "q":
+            # Process the next UI event.
+            try:
+                next_event(model, view, screen, stdscr)
+            except KeyboardInterrupt:
                 break
 
-            # FIXME:
-            elif c == curses.KEY_RESIZE:
-                sy, sx = stdscr.getmaxyx()
-                set_size(screen, sx, sy)
 
-            else:
-                continue
+def main(filename=None):
+    logging.basicConfig(filename="log", level=logging.INFO)
 
+    model, view = load_test(filename or sys.argv[1])
+    screen = Screen(view)
+    main_loop(model, view, screen)
 
 
 if __name__ == "__main__":

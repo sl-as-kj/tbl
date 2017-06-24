@@ -1,6 +1,10 @@
 """
 Curses keyboard handling.
+
+To test keyboard response, run `python -m tbl.curses_keyboard`; press q to exit.
 """
+
+import curses
 
 #-------------------------------------------------------------------------------
 
@@ -74,17 +78,57 @@ def get_key(stdscr):
             else:
                 meta = True
                 continue
-        elif meta:
-            return META_KEYS.get(c, "M-" + KEYS.get(c, chr(c)))
+        elif c == curses.ERR:
+            # Not sure why we get these.
+            continue
+        elif c == curses.KEY_RESIZE:
+            sy, sx = stdscr.getmaxyx()
+            return "RESIZE", (sx, sy)
+        elif c == curses.KEY_MOUSE:
+            _, x, y, _, state = curses.getmouse()
+            # FIXME: Not sure if we have buttons 2/3 right.
+            if state & curses.BUTTON1_CLICKED:
+                key = "LEFTCLICK"
+            elif state & curses.BUTTON1_DOUBLE_CLICKED:
+                key = "LEFTDBLCLICK"
+            elif state & curses.BUTTON2_CLICKED:
+                key = "RIGHTCLICK"
+            elif state & curses.BUTTON2_DOUBLE_CLICKED:
+                key = "RIGHTDBLCLICK"
+            elif state & curses.BUTTON3_CLICKED:
+                key = "MIDDLECLICK"
+            elif state & curses.BUTTON3_DOUBLE_CLICKED:
+                key = "MIDDLEDBLCLICK"
+            else:
+                # Discard other messages, e.g. press/release.
+                continue
+            if state & curses.BUTTON_SHIFT:
+                key = "S-" + key
+            if state & curses.BUTTON_ALT:
+                key = "M-" + key
+            # FIXME: OS/X seems to produce press and release events for CTRL
+            # mouse clicks, but not clicked events.
+            if state & curses.BUTTON_CTRL:
+                key = "C-" + key
+            return "MOUSE", (key, x, y)
+
+        try:
+            return (META_KEYS if meta else KEYS)[c], None
+        except KeyError:
+            pass
+                
+        if 0 <= c < 128:
+            key = chr(c)
+            if meta:
+                key = "M-" + key
+            return key, None
         else:
-            return KEYS.get(c, chr(c))
+            logging.warning("unrecognized key code: {}".format(c))
 
 
 
 #-------------------------------------------------------------------------------
 # Testing
-
-import curses
 
 def main():
     stdscr = curses.initscr()
@@ -93,12 +137,21 @@ def main():
     # curses.cbreak()
     curses.raw()
     curses.curs_set(False)
+    curses.mousemask(
+        curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED)
 
     try:
+        history = []
         while True:
-            key = get_key(stdscr)
-            stdscr.addstr(10, 10, key + "    ")
-            if key == "q":
+            key, arg = get_key(stdscr)
+            k = "{!r}, {!r}".format(key, arg)
+            history.append(k)
+            if len(history) > 10:
+                history.pop(0)
+            stdscr.clear()
+            for i in range(len(history)):
+                stdscr.addstr(i, 2, history[i])
+            if key == "q" or key == 113:
                 break
     finally:
         curses.curs_set(True)
