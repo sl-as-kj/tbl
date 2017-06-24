@@ -4,7 +4,10 @@ Curses keyboard handling.
 To test keyboard response, run `python -m tbl.curses_keyboard`; press q to exit.
 """
 
+#-------------------------------------------------------------------------------
+
 import curses
+import logging
 
 #-------------------------------------------------------------------------------
 
@@ -61,6 +64,8 @@ KEYS = {
     339:    "PAGEUP",
     343:    "ENTER",
     360:    "END",
+    393:    "S-LEFT",
+    402:    "S-RIGHT",
 }        
 
 META_KEYS = {

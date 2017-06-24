@@ -176,9 +176,17 @@ def get_status(view, model, sy):
 #-------------------------------------------------------------------------------
 # Actions
 
-def scroll_to(view, pos):
+def scroll(view, dx=0, dy=0):
     """
-    Adjusts the scroll position such that `pos` is visible.
+    Scrolls the view.
+    """
+    view.scr.x = max(0, min(view.size.x, view.scr.x + dx))
+    view.scr.y = max(0, min(view.size.y, view.scr.y + dy))
+
+
+def scroll_to_pos(view, pos):
+    """
+    Scrolls the view such that `pos` is visible.
     """
     # Find the col in the layout.
     col_idx = view.order[pos.c]
@@ -194,7 +202,7 @@ def scroll_to(view, pos):
     view.scr.y = min(view.cur.r, view.scr.y)
     # Scroll down if necessary.
     # FIXME: Need to know the vertical screen layout here.
-    view.scr.y = max(view.cur.r - view.size.y + 2, view.scr.y)
+    view.scr.y = max(view.cur.r - view.size.y, view.scr.y)
 
 
 def move_cur(view, dc=0, dr=0):
@@ -208,7 +216,7 @@ def move_cur(view, dc=0, dr=0):
     """
     view.cur.c = max(0, min(len(view.order) - 1, view.cur.c + dc))
     view.cur.r = max(0, view.cur.r + dr)
-    scroll_to(view, view.cur)
+    scroll_to_pos(view, view.cur)
 
 
 

@@ -66,6 +66,7 @@ def render_view(win, view, model):
         rows[1 :] = rows[: -1]
         rows[0] = -1
 
+    # The padding at the left and right of each field value.
     pad = " " * view.pad
 
     # Now, draw.
@@ -187,8 +188,7 @@ def load_test(path):
     model = Model()
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
-    view = vw.View(model)
-    return model, view
+    return model
 
 
 def next_event(model, view, screen, stdscr):
@@ -209,6 +209,10 @@ def next_event(model, view, screen, stdscr):
         vw.move_cur(view, dr=-1)
     elif key == "DOWN":
         vw.move_cur(view, dr=+1)
+    elif key == "S-LEFT":
+        vw.scroll(view, dx=-1)
+    elif key == "S-RIGHT":
+        vw.scroll(view, dx=+1)
 
     elif key == "C-k":
         model.delete_row(view.cur.r, set_undo=True)
@@ -245,7 +249,8 @@ def main_loop(model, view, screen):
 def main(filename=None):
     logging.basicConfig(filename="log", level=logging.INFO)
 
-    model, view = load_test(filename or sys.argv[1])
+    model = load_test(filename or sys.argv[1])
+    view = vw.View(model)
     screen = Screen(view)
     main_loop(model, view, screen)
 
