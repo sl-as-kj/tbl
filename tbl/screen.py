@@ -201,6 +201,7 @@ def next_event(model, view, screen, stdscr):
     key, arg = get_key(stdscr)
     logging.info("key: {!r} {!r}".format(key, arg))
 
+    # Cursor movement.
     if key == "LEFT":
         vw.move_cur(view, dc=-1)
     elif key == "RIGHT":
@@ -209,6 +210,11 @@ def next_event(model, view, screen, stdscr):
         vw.move_cur(view, dr=-1)
     elif key == "DOWN":
         vw.move_cur(view, dr=+1)
+    elif key == "LEFTCLICK":
+        x, y = arg
+        vw.move_cur_to_coord(view, x, y)
+
+    # Scrolling.
     elif key == "S-LEFT":
         vw.scroll(view, dx=-1)
     elif key == "S-RIGHT":
