@@ -115,7 +115,7 @@ def get_key(stdscr):
             # mouse clicks, but not clicked events.
             if state & curses.BUTTON_CTRL:
                 key = "C-" + key
-            return "MOUSE", (key, x, y)
+            return key, (x, y)
 
         try:
             return (META_KEYS if meta else KEYS)[c], None

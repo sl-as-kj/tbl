@@ -1,6 +1,8 @@
 import logging
 import numpy as np
 
+from   .lib import *
+
 #-------------------------------------------------------------------------------
 
 class Position(object):
@@ -60,6 +62,8 @@ class View(object):
         self.order  = [ c.id for c in model.cols ]
         # Mapping from col ID to col formatter.
         self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
+        # Number of rows.
+        self.num_rows = model.num_rows
 
         # Window size.
         self.size = Coordinates(80, 25)
@@ -146,7 +150,7 @@ def locate_in_layout(layout, x0):
     Returns the layout entry containing an x coordinate.
     """
     for x, w, type, val in layout:
-        if x <= x0 < x:
+        if x <= x0 < x + w:
             return x, w, type, val
     else:
         return None
@@ -176,12 +180,19 @@ def get_status(view, model, sy):
 #-------------------------------------------------------------------------------
 # Actions
 
+def scroll_to(view, x=None, y=None):
+    """
+    Scrolls the view to a scroll position.
+    """
+    view.scr.x = clip(0, if_none(x, view.scr.x), view.size.x - 1)
+    view.scr.y = clip(0, if_none(y, view.scr.y), view.size.y - 1)
+
+
 def scroll(view, dx=0, dy=0):
     """
-    Scrolls the view.
+    Scrolls the view by offsets.
     """
-    view.scr.x = max(0, min(view.size.x, view.scr.x + dx))
-    view.scr.y = max(0, min(view.size.y, view.scr.y + dy))
+    scroll_to(view.scr.x + dx, view.scr.y + dy)
 
 
 def scroll_to_pos(view, pos):
@@ -201,9 +212,14 @@ def scroll_to_pos(view, pos):
     # Scroll up if necessary.
     view.scr.y = min(view.cur.r, view.scr.y)
     # Scroll down if necessary.
-    # FIXME: Need to know the vertical screen layout here.
     view.scr.y = max(view.cur.r - view.size.y, view.scr.y)
 
+
+def move_cur_to(view, c=None, r=None):
+    view.cur.c = clip(0, if_none(c, view.cur.c), len(view.order) - 1)
+    view.cur.r = clip(0, if_none(r, view.cur.r), view.num_rows - 1)
+    scroll_to_pos(view, view.cur)
+    
 
 def move_cur(view, dc=0, dr=0):
     """
@@ -214,9 +230,20 @@ def move_cur(view, dc=0, dr=0):
     @param dr:
       Change in row position.
     """
-    view.cur.c = max(0, min(len(view.order) - 1, view.cur.c + dc))
-    view.cur.r = max(0, view.cur.r + dr)
-    scroll_to_pos(view, view.cur)
+    move_cur_to(view, view.cur.c + dc, view.cur.r + dr)
 
 
+def move_cur_to_coord(view, x, y):
+    """
+    Moves the cursor to the position matching coordinates `x, y`.
 
+    Does nothing if the coordinates don't correspond to a position, _e.g._
+    the position is on a column separator.
+    """
+    _, _, type, c = locate_in_layout(lay_out_columns(view), view.scr.x + x)
+    if type == "col":
+        # FIXME: Compute row number correctly.
+        r = view.scr.y + y - 1
+        move_cur_to(view, c, r)
+
+    
