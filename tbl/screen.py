@@ -1,5 +1,6 @@
 from   contextlib import contextmanager
 import curses
+import curses.textpad
 import functools
 import logging
 import numpy as np
@@ -191,6 +192,30 @@ def load_test(path):
     return model
 
 
+def cmd_input(screen, stdscr, prompt=""):
+    """
+    Prompts for and reads a line of input in the cmd line.
+    """
+    translate = lambda c: {
+        127: 8,  # BACKSPACE -> C-h
+    }.get(c, c)
+
+    # Draw the prompt.
+    y = screen.size.y - 1
+    stdscr.addstr(y, 0, prompt)
+    stdscr.refresh()
+    # Create a text input in the rest of the cmd line.
+    win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
+    box = curses.textpad.Textbox(win)
+    curses.curs_set(True)
+    # Run it.
+    try:
+        input = box.edit(translate)
+    finally:
+        curses.curs_set(False)
+    return input
+
+
 def next_event(model, view, screen, stdscr):
     """
     Waits for, then processes the next UI event.
@@ -225,6 +250,9 @@ def next_event(model, view, screen, stdscr):
 
     elif key == "C-z":
         model.undo()
+
+    elif key == "M-x":
+        cmd = cmd_input(screen, stdscr, "command: ")
 
     elif key == "q":
         raise KeyboardInterrupt()
