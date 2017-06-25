@@ -26,6 +26,7 @@ class Screen:
         self.status = "tbl " * 5
         self.status_size = 1
         self.cmd_size = 1
+        self.cmd_output = None
 
 
 
@@ -48,17 +49,33 @@ def render_screen(win, screen, model):
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
+    render_cmd(win, screen)
+
     render_view(win, screen.view, model)
 
 
-def render_cmd(win, screen, cmd):
+def set_cmd(win, screen, cmd):
+    screen.cmd_output = cmd
+    render_cmd(win, screen)
+
+def render_cmd(win, screen):
+    if not screen.cmd_output:
+        return
+
     x = screen.size.x
     y = screen.size.y - screen.cmd_size
 
     # TODO: understand why code in render_screen() works with pad(str, x)
     # while this throws an error if x-1 is replaced with x below
     # (presumably boundary condition hit here?)
-    win.addstr(y, 0, pad(cmd, x-1))
+
+    cmds = screen.cmd_output.splitlines()
+    assert len(cmds) == screen.cmd_size
+    for cmd in cmds:
+        win.addstr(y, 0, pad(cmd, x - 1))
+        logging.warning("Trying to render: %s" % cmd)
+        # win.addstr(y, 0, pad(line[: x], x), Attrs.status)
+        y += 1
 
 
 def render_view(win, view, model):
@@ -205,47 +222,6 @@ def load_test(path):
     return model
 
 
-
-def get_cmd_input(screen, stdscr, prompt, max_input_length=50, default_input_str="",
-                  input_keys_stop=('ENTER','RETURN'), input_keys_abort=('C-g', 'ESC', 'M-ESC'), echo_cmd=True):
-
-    """
-    Get input string from a user.
-    TODO: handle max_input_length a bit more gracefully?
-    TODO: clean up cmd box on exit?
-    :param screen:
-    :param stdcr:
-    :param prompt: message to print before processing input from user.
-    :param default_input_str: what to return if enter key is pressed right away.
-    :param input_keys_stop: keys that terminate user input
-    :param input_keys_abort: keys that invalidate user input
-    :param echo_cmd:  whether to update cmd box with each key stroke.
-    :return: (status, input_str)
-    """
-    input_str = ""
-
-    # render the prefix.
-    render_cmd(stdscr, screen, prompt + input_str)
-
-    while 1:
-        key, arg = get_key(stdscr, process_escape_meta=False)
-        if key in input_keys_abort:
-            return 0, None
-        elif key in input_keys_stop:
-            input_str = input_str or default_input_str
-            return 1, input_str
-        elif key == 'BACKSPACE' and len(input_str) > 0:
-            input_str = input_str[:-1]
-        else:
-            input_str += key
-
-        if len(input_str) > max_input_length:
-            return 0, None
-
-        if echo_cmd:
-            render_cmd(stdscr, screen, prompt + input_str)
-
-
 def cmd_input(screen, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
@@ -259,12 +235,12 @@ def cmd_input(screen, stdscr, prompt=""):
 
         # Escape/C-g ==> abort, ala Emacs.
         if c == 27 or c == 7:
-            raise EscapeInterrupt
+            raise EscapeInterrupt()
 
         return translate.get(c, c)
 
     # Draw the prompt.
-    y = screen.size.y - 1
+    y = screen.size.y - screen.cmd_size
     stdscr.addstr(y, 0, prompt)
     stdscr.refresh()
     # Create a text input in the rest of the cmd line.
@@ -292,8 +268,47 @@ def next_event(model, view, screen, stdscr):
     @raise KeyboardInterrupt
       The program should terminate.
     """
+    extended_key = False
     key, arg = get_key(stdscr)
+
     logging.info("key: {!r} {!r}".format(key, arg))
+
+    # clean up cmd box.
+    set_cmd(stdscr, screen, None)
+
+    if key == 'C-x':
+        extended_key = True
+        key, arg = get_key(stdscr)
+        logging.info("key: {!r} {!r}".format(key, arg))
+
+    # Process Ctrl-X
+    if extended_key:
+        # Save.
+        if key in ("C-a", "C-s"):
+            # save-as
+            if key == "C-a":
+                success, filename = cmd_input(screen, stdscr,
+                                              prompt='Save file (%s): ' % model.filename)
+                filename = filename or model.filename
+            # regular save.
+            else:
+                success = True
+                filename = model.filename
+
+            if success:
+                save_msg = "Saving %s..." % filename
+                set_cmd(stdscr, screen, save_msg)
+                stdscr.refresh()
+                save_model(model, filename)
+                save_msg += 'Done.'
+                set_cmd(stdscr, screen, save_msg)
+                stdscr.refresh()
+            pass
+
+        return
+
+
+
 
     # Cursor movement.
     if key == "LEFT":
@@ -319,14 +334,6 @@ def next_event(model, view, screen, stdscr):
 
     elif key == "C-z":
         model.undo()
-
-    elif key == "C-s":
-        success, filename = cmd_input(screen, stdscr,
-                                      prompt='Save file (%s): ' % model.filename)
-
-        if success:
-            filename = filename or model.filename
-            save_model(model, filename)
 
     elif key == "M-x":
         input_str = cmd_input(screen, stdscr, "command: ")
