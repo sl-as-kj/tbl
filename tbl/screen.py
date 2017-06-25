@@ -73,7 +73,6 @@ def render_cmd(win, screen):
     assert len(cmds) == screen.cmd_size
     for cmd in cmds:
         win.addstr(y, 0, pad(cmd, x - 1))
-        logging.warning("Trying to render: %s" % cmd)
         # win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
