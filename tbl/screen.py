@@ -1,5 +1,6 @@
 from   contextlib import contextmanager
 import curses
+import curses.textpad
 import functools
 import logging
 import numpy as np
@@ -202,7 +203,8 @@ def load_test(path):
     return model
 
 
-def get_cmd_input(screen, stdscr, prefix, max_input_length=50, default_input_str="",
+
+def get_cmd_input(screen, stdscr, prompt, max_input_length=50, default_input_str="",
                   input_keys_stop=('ENTER','RETURN'), input_keys_abort=('C-g', 'ESC', 'M-ESC'), echo_cmd=True):
 
     """
@@ -211,7 +213,7 @@ def get_cmd_input(screen, stdscr, prefix, max_input_length=50, default_input_str
     TODO: clean up cmd box on exit?
     :param screen:
     :param stdcr:
-    :param prefix: message to print before processing input from user.
+    :param prompt: message to print before processing input from user.
     :param default_input_str: what to return if enter key is pressed right away.
     :param input_keys_stop: keys that terminate user input
     :param input_keys_abort: keys that invalidate user input
@@ -221,7 +223,7 @@ def get_cmd_input(screen, stdscr, prefix, max_input_length=50, default_input_str
     input_str = ""
 
     # render the prefix.
-    render_cmd(stdscr, screen, prefix + input_str)
+    render_cmd(stdscr, screen, prompt + input_str)
 
     while 1:
         key, arg = get_key(stdscr, process_escape_meta=False)
@@ -239,7 +241,31 @@ def get_cmd_input(screen, stdscr, prefix, max_input_length=50, default_input_str
             return 0, None
 
         if echo_cmd:
-            render_cmd(stdscr, screen, prefix + input_str)
+            render_cmd(stdscr, screen, prompt + input_str)
+
+
+def cmd_input(screen, stdscr, prompt=""):
+    """
+    Prompts for and reads a line of input in the cmd line.
+    """
+    translate = lambda c: {
+        127: 8,  # BACKSPACE -> C-h
+    }.get(c, c)
+
+    # Draw the prompt.
+    y = screen.size.y - 1
+    stdscr.addstr(y, 0, prompt)
+    stdscr.refresh()
+    # Create a text input in the rest of the cmd line.
+    win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
+    box = curses.textpad.Textbox(win)
+    curses.curs_set(True)
+    # Run it.
+    try:
+        input = box.edit(translate)
+    finally:
+        curses.curs_set(False)
+    return input
 
 
 
@@ -280,11 +306,14 @@ def next_event(model, view, screen, stdscr):
 
     elif key == "C-s":
         success, filename = get_cmd_input(screen, stdscr,
-                                          prefix='Save file (%s): ' % model.filename,
+                                          prompt='Save file (%s): ' % model.filename,
                                           default_input_str=model.filename)
 
         if success and filename:
             save_model(model, filename)
+
+    elif key == "M-x":
+        cmd = cmd_input(screen, stdscr, "command: ")
 
     elif key == "q":
         raise KeyboardInterrupt()
