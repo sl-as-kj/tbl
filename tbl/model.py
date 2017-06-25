@@ -94,10 +94,12 @@ class Model:
         :return:
         """
         if not len(self.__undo_info):
-            return
+            return False
 
         func, kwargs = self.__undo_info.pop()
         func(**kwargs)
+
+        return True
 
 
     def get_col(self, col_id):

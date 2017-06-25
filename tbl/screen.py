@@ -332,7 +332,11 @@ def next_event(model, view, screen, stdscr):
         model.delete_row(view.cur.r, set_undo=True)
 
     elif key == "C-z":
-        model.undo()
+        undo_result = model.undo()
+        if not undo_result:
+            set_cmd(stdscr, screen, 'Undo stack empty!')
+        else:
+            set_cmd(stdscr, screen, 'Undo!')
 
     elif key == "M-x":
         input_str = cmd_input(screen, stdscr, "command: ")
