@@ -257,8 +257,7 @@ def cmd_input(screen, stdscr, prompt=""):
                      343: 7 # RETURN --> C-g
                      }
 
-        logging.warning('validating %s' % c)
-
+        # Escape/C-g ==> abort, ala Emacs.
         if c == 27 or c == 7:
             raise EscapeInterrupt
 
@@ -271,16 +270,18 @@ def cmd_input(screen, stdscr, prompt=""):
     # Create a text input in the rest of the cmd line.
     win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
+    # box.stripspaces = True  # as far as I can tell, this does nothing and is on by default anyway.
     curses.curs_set(True)
     # Run it.
     try:
         input = box.edit(_validate).strip()
+        result = True, input
     except EscapeInterrupt:
-        return False, None
+        result = False, None
     finally:
         curses.curs_set(False)
-    logging.warning('here: %d' % ord(input[-1]))
-    return True, input
+
+    return result
 
 
 
@@ -321,11 +322,10 @@ def next_event(model, view, screen, stdscr):
 
     elif key == "C-s":
         success, filename = cmd_input(screen, stdscr,
-                                          prompt='Save file (%s): ' % model.filename)
+                                      prompt='Save file (%s): ' % model.filename)
 
         if success:
             filename = filename or model.filename
-            logging.warning("saving file ---%s--" % filename)
             save_model(model, filename)
 
     elif key == "M-x":
