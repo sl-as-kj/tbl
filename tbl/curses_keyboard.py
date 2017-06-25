@@ -41,12 +41,15 @@ KEYS = {
      26:    "C-z",
      27:    "ESC",
      32:    "SPACE",
-    127:    "BACKSPACE",
+    # 127:    "BACKSPACE",
     258:    "DOWN",
     259:    "UP",
     260:    "LEFT",
     261:    "RIGHT",
     262:    "HOME",
+    # SL:  At least in my setup, BACKSPACE=263 (0407)
+    # see: https://stackoverflow.com/questions/14103341/weird-key-values-printed-by-ncurses
+    curses.KEY_BACKSPACE: 'BACKSPACE',
     265:    "F1",
     266:    "F2",
     267:    "F3",
@@ -73,19 +76,29 @@ META_KEYS = {
     102:    "M-RIGHT",  # M-f 
 }
 
-def get_key(stdscr):
+def get_key(stdscr, process_escape_meta=True):
     meta = False
     while True:
         c = stdscr.getch()
+
         if c == ESC:
+            """
+            Note: the below code will take a while to return just ESC
+            if nothing after it is pressed.  This has to do with the way getch()
+            handles Esc-<sym> stuff.
+            """
+            if not process_escape_meta:
+                return "ESC", None
             if meta:
-                return "M-ESC"
+                return "M-ESC", None
             else:
                 meta = True
                 continue
         elif c == curses.ERR:
             # Not sure why we get these.
             continue
+        elif c == curses.erasechar():
+            return "BACKSPACE", None
         elif c == curses.KEY_RESIZE:
             sy, sx = stdscr.getmaxyx()
             return "RESIZE", (sx, sy)

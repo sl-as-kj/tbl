@@ -8,8 +8,9 @@ import sys
 from   . import view as vw
 from   .curses_keyboard import get_key
 from   .lib import log
-from   .model import Model
+from   .model import Model, save_model
 from   .text import pad, palide
+import curses.textpad
 
 #-------------------------------------------------------------------------------
 
@@ -47,6 +48,16 @@ def render_screen(win, screen, model):
         y += 1
 
     render_view(win, screen.view, model)
+
+
+def render_cmd(win, screen, cmd):
+    x = screen.size.x
+    y = screen.size.y - screen.cmd_size
+
+    # TODO: understand why code in render_screen() works with pad(str, x)
+    # while this throws an error if x-1 is replaced with x below
+    # (presumably boundary condition hit here?)
+    win.addstr(y, 0, pad(cmd, x-1))
 
 
 def render_view(win, view, model):
@@ -174,7 +185,7 @@ def init_attrs():
     Attrs.cur_row = curses.color_pair(3)
 
     Attrs.status = Attrs.normal | curses.A_REVERSE
-
+    Attrs.cmd = Attrs.normal | curses.A_REVERSE
 
 #-------------------------------------------------------------------------------
 
@@ -185,10 +196,48 @@ def load_test(path):
         rows = iter(reader)
         names = next(rows)
         arrs = zip(*list(rows))
-    model = Model()
+    model = Model(path)
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
     return model
+
+
+def get_cmd_input(screen, stdscr, prefix, max_input_length=50,
+                  input_keys_stop=('ENTER','RETURN'), input_keys_abort=('C-g', 'ESC', 'M-ESC'), echo_cmd=True):
+
+    """
+    Get input string from a user.
+    TODO: handle max_input_length a bit more gracefully?
+    TODO: clean up cmd box on exit?
+    :param model:
+    :param view:
+    :param screen:
+    :param stdcr:
+    :return: (status, input_str)
+    """
+    input_str = ""
+
+    # render the prefix.
+    render_cmd(stdscr, screen, prefix + input_str)
+
+    while 1:
+        key, arg = get_key(stdscr, process_escape_meta=False)
+        if key in input_keys_abort:
+            return 0, None
+        elif key in input_keys_stop:
+            return 1, input_str
+        elif key == 'BACKSPACE' and len(input_str) > 0:
+            input_str = input_str[:-1]
+        else:
+            input_str += key
+
+        if len(input_str) > max_input_length:
+            return 0, None
+
+        if echo_cmd:
+            render_cmd(stdscr, screen, prefix + input_str)
+
+
 
 
 def next_event(model, view, screen, stdscr):
@@ -225,6 +274,11 @@ def next_event(model, view, screen, stdscr):
 
     elif key == "C-z":
         model.undo()
+
+    elif key == "C-s":
+        success, filename = get_cmd_input(screen, stdscr, prefix='Save file (%s): ' % model.filename)
+        if success:
+            save_model(model, filename)
 
     elif key == "q":
         raise KeyboardInterrupt()
