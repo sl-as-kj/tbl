@@ -168,7 +168,9 @@ def curses_screen():
 
 class Attrs:
     pass
-    
+
+class EscapeInterrupt(Exception):
+    pass
 
 def init_attrs():
     curses.start_color()
@@ -248,9 +250,19 @@ def cmd_input(screen, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
     """
-    translate = lambda c: {
-        127: 8,  # BACKSPACE -> C-h
-    }.get(c, c)
+
+    def _validate(c):
+        translate = {127: 8, # BACKSPACE -> C-h
+                     10: 7, # ENTER --> C-g
+                     343: 7 # RETURN --> C-g
+                     }
+
+        logging.warning('validating %s' % c)
+
+        if c == 27 or c == 7:
+            raise EscapeInterrupt
+
+        return translate.get(c, c)
 
     # Draw the prompt.
     y = screen.size.y - 1
@@ -262,10 +274,13 @@ def cmd_input(screen, stdscr, prompt=""):
     curses.curs_set(True)
     # Run it.
     try:
-        input = box.edit(translate)
+        input = box.edit(_validate).strip()
+    except EscapeInterrupt:
+        return False, None
     finally:
         curses.curs_set(False)
-    return input
+    logging.warning('here: %d' % ord(input[-1]))
+    return True, input
 
 
 
@@ -305,15 +320,17 @@ def next_event(model, view, screen, stdscr):
         model.undo()
 
     elif key == "C-s":
-        success, filename = get_cmd_input(screen, stdscr,
-                                          prompt='Save file (%s): ' % model.filename,
-                                          default_input_str=model.filename)
+        success, filename = cmd_input(screen, stdscr,
+                                          prompt='Save file (%s): ' % model.filename)
 
-        if success and filename:
+        if success:
+            filename = filename or model.filename
+            logging.warning("saving file ---%s--" % filename)
             save_model(model, filename)
 
     elif key == "M-x":
-        cmd = cmd_input(screen, stdscr, "command: ")
+        input_str = cmd_input(screen, stdscr, "command: ")
+        logging.warning (input_str)
 
     elif key == "q":
         raise KeyboardInterrupt()
