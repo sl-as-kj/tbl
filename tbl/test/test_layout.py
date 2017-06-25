@@ -7,7 +7,7 @@ from   tbl.view import View, lay_out_columns
 #-------------------------------------------------------------------------------
 
 def test_lay_out_0():
-    model = Model()
+    model = Model(filename=None)
     model.add_col(np.array([ 1,  2,  3]), "foo")
     model.add_col(np.array([ 8,  9, 10]), "bar")
     view = View(model)

@@ -147,7 +147,6 @@ def save_model(model, filename, new_filename=True):
         writer = csv.writer(csvfile)
         # write header
         header = [col.name for col in model.cols]
-        logging.warning(header)
         writer.writerow(header)
         # write rows.
         for row_num in range(model.num_rows):

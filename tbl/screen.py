@@ -202,17 +202,20 @@ def load_test(path):
     return model
 
 
-def get_cmd_input(screen, stdscr, prefix, max_input_length=50,
+def get_cmd_input(screen, stdscr, prefix, max_input_length=50, default_input_str="",
                   input_keys_stop=('ENTER','RETURN'), input_keys_abort=('C-g', 'ESC', 'M-ESC'), echo_cmd=True):
 
     """
     Get input string from a user.
     TODO: handle max_input_length a bit more gracefully?
     TODO: clean up cmd box on exit?
-    :param model:
-    :param view:
     :param screen:
     :param stdcr:
+    :param prefix: message to print before processing input from user.
+    :param default_input_str: what to return if enter key is pressed right away.
+    :param input_keys_stop: keys that terminate user input
+    :param input_keys_abort: keys that invalidate user input
+    :param echo_cmd:  whether to update cmd box with each key stroke.
     :return: (status, input_str)
     """
     input_str = ""
@@ -225,6 +228,7 @@ def get_cmd_input(screen, stdscr, prefix, max_input_length=50,
         if key in input_keys_abort:
             return 0, None
         elif key in input_keys_stop:
+            input_str = input_str or default_input_str
             return 1, input_str
         elif key == 'BACKSPACE' and len(input_str) > 0:
             input_str = input_str[:-1]
@@ -236,7 +240,6 @@ def get_cmd_input(screen, stdscr, prefix, max_input_length=50,
 
         if echo_cmd:
             render_cmd(stdscr, screen, prefix + input_str)
-
 
 
 
@@ -276,8 +279,11 @@ def next_event(model, view, screen, stdscr):
         model.undo()
 
     elif key == "C-s":
-        success, filename = get_cmd_input(screen, stdscr, prefix='Save file (%s): ' % model.filename)
-        if success:
+        success, filename = get_cmd_input(screen, stdscr,
+                                          prefix='Save file (%s): ' % model.filename,
+                                          default_input_str=model.filename)
+
+        if success and filename:
             save_model(model, filename)
 
     elif key == "q":
