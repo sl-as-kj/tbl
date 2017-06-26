@@ -11,6 +11,7 @@ def test_lay_out_0():
     model.add_col(np.array([ 1,  2,  3]), "foo")
     model.add_col(np.array([ 8,  9, 10]), "bar")
     view = View(model)
+    view.show_row_num  = False
     view.left_border   = "|>"
     view.separator     = "||"
     view.right_border  = "<|"
