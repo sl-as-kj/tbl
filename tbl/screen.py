@@ -116,6 +116,16 @@ def render_view(win, view, model):
                     text = (pad + fmt(arr[row]) + pad)
                 win.addstr(y, x, text[t0 : t1], attr)
 
+        elif type == "row_num":
+            fmt_str = "0{}d".format(z)
+            for y, row in enumerate(rows):
+                attr = Attrs.cur_row if row == r else Attrs.normal
+                if row == -1:
+                    # Header
+                    pass
+                else:
+                    win.addstr(y, x, pad + format(row, fmt_str) + pad, attr)
+
         else:
             raise NotImplementedError("type: {!r}".format(type))
 
@@ -244,6 +254,9 @@ def next_event(model, view, screen, stdscr):
         vw.scroll(view, dx=-1)
     elif key == "S-RIGHT":
         vw.scroll(view, dx=+1)
+
+    elif key == "M-#":
+        view.show_row_num = not view.show_row_num
 
     elif key == "C-k":
         model.delete_row(view.cur.r, set_undo=True)

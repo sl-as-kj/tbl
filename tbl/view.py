@@ -1,4 +1,5 @@
 import logging
+import math
 import numpy as np
 
 from   .lib import *
@@ -73,6 +74,7 @@ class View(object):
         self.cur = Position(0, 0)
 
         self.show_header = True
+        self.show_row_num = True
 
         # Decoration characters.
         self.left_border    = "\u2551"
@@ -103,12 +105,19 @@ def lay_out_columns(view):
     """
     x = 0
 
+    first = True
+
+    if view.show_row_num:
+        digits = int(math.log10(view.num_rows)) + 1
+        w = digits + 2 * view.pad
+        yield x, w, "row_num", digits
+        x += w
+
     if view.left_border:
         w = len(view.left_border)
         yield x, w, "text", view.left_border
         x += w
 
-    first = True
     for c, col_id in enumerate(view.order):
         if first:
             first = False
