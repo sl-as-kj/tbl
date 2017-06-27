@@ -47,7 +47,7 @@ def test_using_cxx_api_docs():
     assert fixfmt.Number(5, 1)(x) == '   123.5'
     assert fixfmt.Number(3, 3)(x) == ' 123.457'
 
-    assert fixfmt.Number(5)(x) == '  123'
+    assert fixfmt.Number(5)(x) == '   123'
 
 
 @pytest.mark.parametrize('index', range(-5, 6, 1))
@@ -156,14 +156,15 @@ def test_number_float_rounding():
     pass
     
 
-@pytest.mark.skip
-@pytest.mark.parametrize('i', range(-9994, 9995))
-def test_number_float_exhaustive(i):
-    fmt = fixfmt.Number(1, 2, '+')
-    val = 0.001 * i
-    expected = '{:4.2f}'.format(val)
-    actual = fmt(val)
-    assert actual == expected
+# # uncomment when ready
+# @pytest.mark.skip
+# @pytest.mark.parametrize('i', range(-9994, 9995))
+# def test_number_float_exhaustive(i):
+#     fmt = fixfmt.Number(1, 2, '+')
+#     val = 0.001 * i
+#     expected = '{:4.2f}'.format(val)
+#     actual = fmt(val)
+#     assert actual == expected
 
 
 def test_number_integer_size():
@@ -182,7 +183,7 @@ def test_number_integer_size():
 
 
 def test_number_float_precision():
-    assert '-123' == fixfmt.Number(3, fixfmt.PRECISION_NONE)(-123.45678)
+    assert '-123' == fixfmt.Number(3, None)(-123.45678)
     assert '-123.' == fixfmt.Number(3, 0)(-123.45678)
     assert '-123.5' == fixfmt.Number(3, 1)(-123.45678)
     assert '-123.46' == fixfmt.Number(3, 2)(-123.45678)
