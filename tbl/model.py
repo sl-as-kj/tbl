@@ -1,5 +1,7 @@
 import itertools
 import numpy as np
+import csv
+import logging
 
 #-------------------------------------------------------------------------------
 
@@ -17,13 +19,14 @@ class Model:
             self.arr    = arr
 
 
-    def __init__(self):
+    def __init__(self, filename):
         # Columns, in order.
         self.__cols         = []
         # Number of rows in the table, or None if no columns so far.
         self.__num_rows     = None
 
         self.__undo_info = []
+        self.filename = filename
 
 
     def add_col(self, arr, name=None, *, position=None):
@@ -91,10 +94,12 @@ class Model:
         :return:
         """
         if not len(self.__undo_info):
-            return
+            return False
 
         func, kwargs = self.__undo_info.pop()
         func(**kwargs)
+
+        return True
 
 
     def get_col(self, col_id):
@@ -130,4 +135,25 @@ class Model:
         return iter(self.__cols)
 
 
+def save_model(model, filename, new_filename=True):
+    """
+    Save the model to a file.
+    TODO: This needs a lot of work to preserve
+    formatting, etc.
+    :param model:
+    :param filename:
+    :param new_filename:
+    :return:
+    """
+    with open(filename, 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        # write header
+        header = [col.name for col in model.cols]
+        writer.writerow(header)
+        # write rows.
+        for row_num in range(model.num_rows):
+            row = [str(c.arr[row_num]) for c in model.cols]
+            writer.writerow(row)
 
+    if new_filename:
+        model.filename = filename

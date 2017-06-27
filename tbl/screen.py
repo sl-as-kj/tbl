@@ -9,8 +9,9 @@ import sys
 from   . import view as vw
 from   .curses_keyboard import get_key
 from   .lib import log
-from   .model import Model
+from   .model import Model, save_model
 from   .text import pad, palide
+import curses.textpad
 
 #-------------------------------------------------------------------------------
 
@@ -25,6 +26,7 @@ class Screen:
         self.status = "tbl " * 5
         self.status_size = 1
         self.cmd_size = 1
+        self.cmd_output = None
 
 
 
@@ -47,7 +49,32 @@ def render_screen(win, screen, model):
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
+    render_cmd(win, screen)
+
     render_view(win, screen.view, model)
+
+
+def set_cmd(win, screen, cmd):
+    screen.cmd_output = cmd
+    render_cmd(win, screen)
+
+def render_cmd(win, screen):
+    if not screen.cmd_output:
+        return
+
+    x = screen.size.x
+    y = screen.size.y - screen.cmd_size
+
+    # TODO: understand why code in render_screen() works with pad(str, x)
+    # while this throws an error if x-1 is replaced with x below
+    # (presumably boundary condition hit here?)
+
+    cmds = screen.cmd_output.splitlines()
+    assert len(cmds) == screen.cmd_size
+    for cmd in cmds:
+        win.addstr(y, 0, pad(cmd, x - 1))
+        # win.addstr(y, 0, pad(line[: x], x), Attrs.status)
+        y += 1
 
 
 def render_view(win, view, model):
@@ -167,7 +194,9 @@ def curses_screen():
 
 class Attrs:
     pass
-    
+
+class EscapeInterrupt(Exception):
+    pass
 
 def init_attrs():
     curses.start_color()
@@ -185,7 +214,7 @@ def init_attrs():
     Attrs.cur_row = curses.color_pair(3)
 
     Attrs.status = Attrs.normal | curses.A_REVERSE
-
+    Attrs.cmd = Attrs.normal | curses.A_REVERSE
 
 #-------------------------------------------------------------------------------
 
@@ -196,7 +225,7 @@ def load_test(path):
         rows = iter(reader)
         names = next(rows)
         arrs = zip(*list(rows))
-    model = Model()
+    model = Model(path)
     for arr, name in zip(arrs, names):
         model.add_col(arr, name)
     return model
@@ -206,24 +235,39 @@ def cmd_input(screen, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
     """
-    translate = lambda c: {
-        127: 8,  # BACKSPACE -> C-h
-    }.get(c, c)
+
+    def _validate(c):
+        translate = {127: 8, # BACKSPACE -> C-h
+                     10: 7, # ENTER --> C-g
+                     343: 7 # RETURN --> C-g
+                     }
+
+        # Escape/C-g ==> abort, ala Emacs.
+        if c == 27 or c == 7:
+            raise EscapeInterrupt()
+
+        return translate.get(c, c)
 
     # Draw the prompt.
-    y = screen.size.y - 1
+    y = screen.size.y - screen.cmd_size
     stdscr.addstr(y, 0, prompt)
     stdscr.refresh()
     # Create a text input in the rest of the cmd line.
     win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
+    # box.stripspaces = True  # as far as I can tell, this does nothing and is on by default anyway.
     curses.curs_set(True)
     # Run it.
     try:
-        input = box.edit(translate)
+        input = box.edit(_validate).strip()
+        result = True, input
+    except EscapeInterrupt:
+        result = False, None
     finally:
         curses.curs_set(False)
-    return input
+
+    return result
+
 
 
 def next_event(model, view, screen, stdscr):
@@ -233,8 +277,47 @@ def next_event(model, view, screen, stdscr):
     @raise KeyboardInterrupt
       The program should terminate.
     """
+    extended_key = False
     key, arg = get_key(stdscr)
+
     logging.info("key: {!r} {!r}".format(key, arg))
+
+    # clean up cmd box.
+    set_cmd(stdscr, screen, None)
+
+    if key == 'C-x':
+        extended_key = True
+        key, arg = get_key(stdscr)
+        logging.info("key: {!r} {!r}".format(key, arg))
+
+    # Process Ctrl-X
+    if extended_key:
+        # Save.
+        if key in ("C-a", "C-s"):
+            # save-as
+            if key == "C-a":
+                success, filename = cmd_input(screen, stdscr,
+                                              prompt='Save file (%s): ' % model.filename)
+                filename = filename or model.filename
+            # regular save.
+            else:
+                success = True
+                filename = model.filename
+
+            if success:
+                save_msg = "Saving %s..." % filename
+                set_cmd(stdscr, screen, save_msg)
+                stdscr.refresh()
+                save_model(model, filename)
+                save_msg += 'Done.'
+                set_cmd(stdscr, screen, save_msg)
+                stdscr.refresh()
+            pass
+
+        return
+
+
+
 
     # Cursor movement.
     if key == "LEFT":
@@ -262,10 +345,15 @@ def next_event(model, view, screen, stdscr):
         model.delete_row(view.cur.r, set_undo=True)
 
     elif key == "C-z":
-        model.undo()
+        undo_result = model.undo()
+        if not undo_result:
+            set_cmd(stdscr, screen, 'Undo stack empty!')
+        else:
+            set_cmd(stdscr, screen, 'Undo!')
 
     elif key == "M-x":
-        cmd = cmd_input(screen, stdscr, "command: ")
+        input_str = cmd_input(screen, stdscr, "command: ")
+        logging.warning (input_str)
 
     elif key == "q":
         raise KeyboardInterrupt()
