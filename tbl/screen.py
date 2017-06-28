@@ -4,6 +4,7 @@ import curses.textpad
 import functools
 import logging
 import numpy as np
+import os
 import sys
 
 from   . import view as vw
@@ -50,13 +51,8 @@ def render_screen(win, screen, model):
         y += 1
 
     render_cmd(win, screen)
-
     render_view(win, screen.view, model)
 
-
-def set_cmd(win, screen, cmd):
-    screen.cmd_output = cmd
-    render_cmd(win, screen)
 
 def render_cmd(win, screen):
     if not screen.cmd_output:
@@ -65,15 +61,12 @@ def render_cmd(win, screen):
     x = screen.size.x
     y = screen.size.y - screen.cmd_size
 
-    # TODO: understand why code in render_screen() works with pad(str, x)
-    # while this throws an error if x-1 is replaced with x below
-    # (presumably boundary condition hit here?)
-
     cmds = screen.cmd_output.splitlines()
     assert len(cmds) == screen.cmd_size
     for cmd in cmds:
-        win.addstr(y, 0, pad(cmd, x - 1))
-        # win.addstr(y, 0, pad(line[: x], x), Attrs.status)
+        # FIXME: Writing the bottom-right corner causes an error, which is
+        # why we use x - 1.
+        win.addstr(y, 0, pad(cmd, x - 1), Attrs.status)
         y += 1
 
 
@@ -164,12 +157,20 @@ def curses_screen():
 
     Returns the screen window on entry.  Restores the terminal view on exit.
     """
+    # Disable the curses ESC translation delay.
+    # FIXME: It might be possible to set the ESCDELAY variable in libncurses.so
+    # directly with ctypes.
+    os.environ["ESCDELAY"] = "0"
+
     stdscr = curses.initscr()
     curses.noecho()
-    stdscr.keypad(True)
     curses.cbreak()
     curses.curs_set(False)
     curses.raw()
+
+    stdscr.keypad(True)
+    stdscr.notimeout(True)
+    stdscr.nodelay(True)
 
     # Enable mouse events.
     mouse_mask = curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
@@ -184,10 +185,13 @@ def curses_screen():
     try:
         yield stdscr
     finally:
+        stdscr.nodelay(False)
+        stdscr.notimeout(False)
+        stdscr.keypad(False)
+
         curses.noraw()
         curses.curs_set(True)
         curses.nocbreak()
-        stdscr.keypad(False)
         curses.echo()
         curses.endwin()
 
@@ -235,18 +239,14 @@ def cmd_input(screen, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
     """
-
-    def _validate(c):
-        translate = {127: 8, # BACKSPACE -> C-h
-                     10: 7, # ENTER --> C-g
-                     343: 7 # RETURN --> C-g
-                     }
-
-        # Escape/C-g ==> abort, ala Emacs.
-        if c == 27 or c == 7:
+    def translate(c):
+        logging.info("translace {}".format(c))
+        if c == 7:  # C-g
             raise EscapeInterrupt()
-
-        return translate.get(c, c)
+        else:
+            return {
+                127: curses.KEY_BACKSPACE,
+            }.get(c, c)
 
     # Draw the prompt.
     y = screen.size.y - screen.cmd_size
@@ -255,11 +255,10 @@ def cmd_input(screen, stdscr, prompt=""):
     # Create a text input in the rest of the cmd line.
     win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
-    # box.stripspaces = True  # as far as I can tell, this does nothing and is on by default anyway.
     curses.curs_set(True)
     # Run it.
     try:
-        input = box.edit(_validate).strip()
+        input = box.edit(translate).strip()
         result = True, input
     except EscapeInterrupt:
         result = False, None
@@ -282,8 +281,7 @@ def next_event(model, view, screen, stdscr):
 
     logging.info("key: {!r} {!r}".format(key, arg))
 
-    # clean up cmd box.
-    set_cmd(stdscr, screen, None)
+    screen.cmd = None
 
     if key == 'C-x':
         extended_key = True
@@ -305,19 +303,13 @@ def next_event(model, view, screen, stdscr):
                 filename = model.filename
 
             if success:
-                save_msg = "Saving %s..." % filename
-                set_cmd(stdscr, screen, save_msg)
-                stdscr.refresh()
+                save_msg = "Saving {}...".format(filename)
+                screen.cmd = save_msg
+
                 save_model(model, filename)
-                save_msg += 'Done.'
+                save_msg += ' Done.'
                 set_cmd(stdscr, screen, save_msg)
-                stdscr.refresh()
-            pass
-
         return
-
-
-
 
     # Cursor movement.
     if key == "LEFT":

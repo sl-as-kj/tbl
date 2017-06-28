@@ -8,6 +8,8 @@ To test keyboard response, run `python -m tbl.curses_keyboard`; press q to exit.
 
 import curses
 import logging
+import os
+import time
 
 #-------------------------------------------------------------------------------
 
@@ -41,15 +43,11 @@ KEYS = {
      26:    "C-z",
      27:    "ESC",
      32:    "SPACE",
-    # 127:    "BACKSPACE",
     258:    "DOWN",
     259:    "UP",
     260:    "LEFT",
     261:    "RIGHT",
     262:    "HOME",
-    # SL:  At least in my setup, BACKSPACE=263 (0407)
-    # see: https://stackoverflow.com/questions/14103341/weird-key-values-printed-by-ncurses
-    curses.KEY_BACKSPACE: 'BACKSPACE',
     265:    "F1",
     266:    "F2",
     267:    "F3",
@@ -69,6 +67,8 @@ KEYS = {
     360:    "END",
     393:    "S-LEFT",
     402:    "S-RIGHT",
+
+    curses.KEY_BACKSPACE: "BACKSPACE",
 }        
 
 META_KEYS = {
@@ -76,30 +76,20 @@ META_KEYS = {
     102:    "M-RIGHT",  # M-f 
 }
 
-def get_key(stdscr, process_escape_meta=True):
-    meta = False
+def get_key(stdscr, interval=0.01):
     while True:
+        meta = False
         c = stdscr.getch()
+        if c == -1:
+            # No character available.
+            time.sleep(interval)
+            continue
 
-        if c == ESC:
-            """
-            Note: the below code will take a while to return just ESC
-            if nothing after it is pressed.  This has to do with the way getch()
-            handles Esc-<sym> stuff.
-            """
-            if not process_escape_meta:
-                return "ESC", None
-            if meta:
-                return "M-ESC", None
-            else:
-                meta = True
-                continue
-        elif c == curses.ERR:
+        if c == curses.ERR:
             # Not sure why we get these.
             continue
-        elif c == curses.erasechar():
-            return "BACKSPACE", None
-        elif c == curses.KEY_RESIZE:
+
+        if c == curses.KEY_RESIZE:
             sy, sx = stdscr.getmaxyx()
             return "RESIZE", (sx, sy)
         elif c == curses.KEY_MOUSE:
@@ -130,18 +120,32 @@ def get_key(stdscr, process_escape_meta=True):
                 key = "C-" + key
             return key, (x, y)
 
+        if c == ESC:
+            # This might be an escape sequence.  Read more.
+            c = stdscr.getch()
+            if c == -1:
+                # Nope; a bare escape.
+                return "ESC", None
+            else:
+                meta = True
+
+        if meta:
+            try:
+                return META_KEYS[c], None
+            except KeyError:
+                pass
+
         try:
-            return (META_KEYS if meta else KEYS)[c], None
+            key = KEYS[c]
         except KeyError:
-            pass
-                
-        if 0 <= c < 128:
-            key = chr(c)
-            if meta:
-                key = "M-" + key
-            return key, None
-        else:
-            logging.warning("unrecognized key code: {}".format(c))
+            if 0 <= c < 128:
+                key = chr(c)
+            else:
+                logging.warning("unrecognized key code: {}".format(c))
+
+        if meta:
+            key = "M-" + key
+        return key, None
 
 
 
@@ -149,14 +153,19 @@ def get_key(stdscr, process_escape_meta=True):
 # Testing
 
 def main():
+    os.environ["ESCDELAY"] = "0"
+
     stdscr = curses.initscr()
     curses.noecho()
-    stdscr.keypad(True)
-    # curses.cbreak()
     curses.raw()
     curses.curs_set(False)
-    curses.mousemask(
-        curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED)
+
+    # Enable mouse actions.
+    curses.mousemask(curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED)
+
+    stdscr.keypad(True)
+    stdscr.nodelay(True)
+    stdscr.notimeout(True)
 
     try:
         history = []
@@ -174,7 +183,6 @@ def main():
     finally:
         curses.curs_set(True)
         curses.noraw()
-        # curses.nocbreak()
         stdscr.keypad(False)
         curses.echo()
         curses.endwin()
