@@ -201,54 +201,54 @@ def test_number_int_pad():
 
 
 def test_number_int_sign():
-    assert '     42.' == fixfmt.Number(6, 0, '-')( 42)
-    assert '    -42.' == fixfmt.Number(6, 0, '-')(-42)
+    assert '     42.' == fixfmt.Number(6, 0, fixfmt.SIGN_NEGATIVE)( 42)
+    assert '    -42.' == fixfmt.Number(6, 0, fixfmt.SIGN_NEGATIVE)(-42)
     assert ' 000042.' == fixfmt.Number(6, 0, pad='0')( 42)
     assert '-000042.' == fixfmt.Number(6, 0, pad='0')(-42)
 
-    assert '    +42.' == fixfmt.Number(6, 0, '+')( 42)
-    assert '    -42.' == fixfmt.Number(6, 0, '+')(-42)
+    assert '    +42.' == fixfmt.Number(6, 0, fixfmt.SIGN_ALWAYS)( 42)
+    assert '    -42.' == fixfmt.Number(6, 0, fixfmt.SIGN_ALWAYS)(-42)
     assert '+000042.' == fixfmt.Number(6, 0, sign='+', pad='0')( 42)
     assert '-000042.' == fixfmt.Number(6, 0, sign='+', pad='0')(-42)
 
-    assert '    42.' == fixfmt.Number(6, 0, pad=' ', sign=' ')( 42)
-    assert '#######' == fixfmt.Number(6, 0, pad=' ', sign=' ')(-42)
-    assert '000042.' == fixfmt.Number(6, 0, pad='0', sign=' ')( 42)
-    assert '#######' == fixfmt.Number(6, 0, pad='0', sign=' ')(-42)
+    assert '    42.' == fixfmt.Number(6, 0, pad=' ', sign=fixfmt.SIGN_NONE)( 42)
+    assert '#######' == fixfmt.Number(6, 0, pad=' ', sign=fixfmt.SIGN_NONE)(-42)
+    assert '000042.' == fixfmt.Number(6, 0, pad='0', sign=fixfmt.SIGN_NONE)( 42)
+    assert '#######' == fixfmt.Number(6, 0, pad='0', sign=fixfmt.SIGN_NONE)(-42)
 
 
 def test_number_nan():
-    assert 'N' == fixfmt.Number(1, -1, ' ')(math.nan)
-    assert 'Na' == fixfmt.Number(2, -1, ' ')(math.nan)
-    assert 'NaN' == fixfmt.Number(3, -1, ' ')(math.nan)
-    assert 'NaN   ' == fixfmt.Number(2, 2, '-', nan="NaN")(math.nan)
-    assert 'nan   ' == fixfmt.Number(2, 2, '-', nan="nan")(math.nan)
-    assert 'NotANu' == fixfmt.Number(2, 2, '-', nan="NotANumber")(math.nan)
-    assert '  NotANumber' == fixfmt.Number(12, -1, ' ', nan="NotANumber")(math.nan)
+    assert 'N' == fixfmt.Number(1, -1, fixfmt.SIGN_NONE)(math.nan)
+    assert 'Na' == fixfmt.Number(2, -1, fixfmt.SIGN_NONE)(math.nan)
+    assert 'NaN' == fixfmt.Number(3, -1, fixfmt.SIGN_NONE)(math.nan)
+    assert 'NaN   ' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, nan="NaN")(math.nan)
+    assert 'nan   ' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, nan="nan")(math.nan)
+    assert 'NotANu' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, nan="NotANumber")(math.nan)
+    assert '  NotANumber' == fixfmt.Number(12, -1, fixfmt.SIGN_NONE, nan="NotANumber")(math.nan)
 
 
 def test_number_infinity():
-    assert 'i' == fixfmt.Number(1, -1, ' ')(math.inf)
-    assert 'in' == fixfmt.Number(2, -1, ' ')(math.inf)
-    assert 'inf' == fixfmt.Number(3, -1, ' ')(math.inf)
-    assert '###' == fixfmt.Number(3, -1, ' ')(-math.inf)
-    assert ' inf' == fixfmt.Number(3, -1, '-')(math.inf)
-    assert '-inf' == fixfmt.Number(3, -1, '-')(-math.inf)
-    assert '+inf' == fixfmt.Number(3, -1, '+')(math.inf)
-    assert '-inf' == fixfmt.Number(3, -1, '+')(-math.inf)
+    assert 'i' == fixfmt.Number(1, -1, fixfmt.SIGN_NONE)(math.inf)
+    assert 'in' == fixfmt.Number(2, -1, fixfmt.SIGN_NONE)(math.inf)
+    assert 'inf' == fixfmt.Number(3, -1, fixfmt.SIGN_NONE)(math.inf)
+    assert '###' == fixfmt.Number(3, -1, fixfmt.SIGN_NONE)(-math.inf)
+    assert ' inf' == fixfmt.Number(3, -1, fixfmt.SIGN_NEGATIVE)(math.inf)
+    assert '-inf' == fixfmt.Number(3, -1, fixfmt.SIGN_NEGATIVE)(-math.inf)
+    assert '+inf' == fixfmt.Number(3, -1, fixfmt.SIGN_ALWAYS)(math.inf)
+    assert '-inf' == fixfmt.Number(3, -1, fixfmt.SIGN_ALWAYS)(-math.inf)
     
-    assert ' inf  ' == fixfmt.Number(2, 2, '-', inf="inf")(math.inf)
-    assert ' INF  ' == fixfmt.Number(2, 2, '-', inf="INF")(math.inf)
-    assert ' infin' == fixfmt.Number(2, 2, '-', inf="infinity")(math.inf)
-    assert '+infin' == fixfmt.Number(2, 2, '+', inf="infinity")(math.inf)
-    assert '-infin' == fixfmt.Number(2, 2, '-', inf="infinity")(-math.inf)
+    assert ' inf  ' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, inf="inf")(math.inf)
+    assert ' INF  ' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, inf="INF")(math.inf)
+    assert ' infin' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, inf="infinity")(math.inf)
+    assert '+infin' == fixfmt.Number(2, 2, fixfmt.SIGN_ALWAYS, inf="infinity")(math.inf)
+    assert '-infin' == fixfmt.Number(2, 2, fixfmt.SIGN_NEGATIVE, inf="infinity")(-math.inf)
     
-    assert '    infinity' == fixfmt.Number(12, -1, ' ', inf="infinity")(math.inf)
-    assert '   -infinity' == fixfmt.Number(11, -1, '-', inf="infinity")(-math.inf)
-    assert '############' == fixfmt.Number(12, -1, ' ', inf="infinity")(-math.inf)
+    assert '    infinity' == fixfmt.Number(12, -1, fixfmt.SIGN_NONE, inf="infinity")(math.inf)
+    assert '   -infinity' == fixfmt.Number(11, -1, fixfmt.SIGN_NEGATIVE, inf="infinity")(-math.inf)
+    assert '############' == fixfmt.Number(12, -1, fixfmt.SIGN_NONE, inf="infinity")(-math.inf)
 
 def test_number_infinity_format():
-    fmt = fixfmt.Number(1, fixfmt.PRECISION_NONE, fixfmt.SIGN_NEGATIVE, nan="NaN", inf='\u221e')
+    fmt = fixfmt.Number(1, None, fixfmt.SIGN_NEGATIVE, nan="NaN", inf='\u221e')
     assert ' 5' == fmt(5)
     assert ' \u221e' == fmt( math.inf)
     assert '-\u221e' == fmt(-math.inf)
@@ -256,7 +256,7 @@ def test_number_infinity_format():
 
 def test_number_scale():
     fmt = fixfmt.Number(3, 1, scale={1e6, 'M'})
-    assert 7 == fmt.width()
+    assert 7 == fmt.width
     assert ' 100.0M' == fmt(         1E+8  )
     assert '  12.3M' == fmt(  12345678     )
     assert '  12.3M' == fmt(  12345678.0   )

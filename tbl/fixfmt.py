@@ -73,7 +73,7 @@ class Number(object):
     A fixed-width format for integer and floating-point types
     """
     def __init__(self, size=8, precision=None, sign=SIGN_NEGATIVE, pad=' ', point='.', nan='NaN', inf='inf',
-                 bad='#'):
+                 bad='#', scale=None):
         """
 
         :param size: number of integral digits
@@ -92,8 +92,9 @@ class Number(object):
         self.pad = pad
         self.point = point
         self.nan = nan
-        self.inf = inf,
+        self.inf = inf
         self.bad = bad
+        self.scale = scale
 
     @property
     def width(self):
@@ -102,10 +103,18 @@ class Number(object):
     def __call__(self, value):
 
 
-        # value = round(value, ndigits=self.precision)
         width = self.width
         if math.isnan(value):
             return String(width)(self.nan)
+
+        if math.isinf(value):
+            if self.sign is SIGN_NONE:
+                sign = ''
+            elif self.sign is SIGN_NEGATIVE:
+                sign = '-' if value < 0 else ' '
+            else:
+                sign = '-' if value < 0 else '+'
+            return sign + String(width-1)(self.inf)
 
         if self.sign is SIGN_NONE:
             assert value >= 0
