@@ -3,6 +3,8 @@ import numpy as np
 import csv
 import logging
 
+from   .commands import param
+
 #-------------------------------------------------------------------------------
 
 class Model:
@@ -135,7 +137,7 @@ class Model:
         return iter(self.__cols)
 
 
-def save_model(model, filename, new_filename=True):
+def save_model(model, filename):
     """
     Save the model to a file.
     TODO: This needs a lot of work to preserve
@@ -155,5 +157,15 @@ def save_model(model, filename, new_filename=True):
             row = [str(c.arr[row_num]) for c in model.cols]
             writer.writerow(row)
 
-    if new_filename:
+
+def cmd_save(model):
+    save_model(model, model.filename)
+
+
+@param("filename", "save file as")
+def cmd_save_as(model, filename):
+    if len(filename) > 0:
+        save_model(model, filename)
         model.filename = filename
+
+
