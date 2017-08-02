@@ -2,7 +2,7 @@ from   functools import partial
 
 from   . import commands
 from   . import model as mdl
-from   .screen import set_size
+from   . import screen
 from   . import view as vw
 
 #-------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ def get_default():
         ("C-x", "C-w")  : mdl.cmd_save_as,
         "C-z"           : lambda model: model.undo(),
         "q"             : commands.cmd_quit,
-        "RESIZE"        : lambda arg: set_size(screen, arg[0], arg[1]),
+        "RESIZE"        : lambda arg: screen.set_size(screen, arg[0], arg[1]),
     })
 
 
