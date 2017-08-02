@@ -32,25 +32,6 @@ def get_params(fn):
 
 #-------------------------------------------------------------------------------
 
-def check_key_map(key_map):
-    # Convert single character keys to tuples, for convenience.
-    key_map = {
-        (k, ) if isinstance(k, str) else tuple( str(s) for s in k ): v
-        for k, v in key_map.items()
-    }
-
-    # Check prefixes.
-    for combo in [ k for k in key_map if len(k) > 1 ]:
-        prefix = combo[: -1]
-        while len(prefix) > 1:
-            if key_map.setdefault(prefix, None) is not None:
-                raise ValueError(
-                    "combo {} but not prefix {}".format(combo, prefix))
-            prefix = prefix[: -1]
-            
-    return key_map
-
-
 def bind_args(fn, args, input):
     # Got a key binding.  Bind arguments by name.
     sig = inspect.signature(fn)
