@@ -256,3 +256,7 @@ def move_cur_to_coord(view, x, y):
         move_cur_to(view, c, r)
 
     
+def toggle_show_row_num(view):
+    view.show_row_num = not view.show_row_num
+
+

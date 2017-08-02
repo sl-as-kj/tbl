@@ -2,15 +2,18 @@ from   contextlib import contextmanager
 import curses
 import curses.textpad
 import functools
+from   functools import partial
 import logging
 import numpy as np
 import os
 import sys
 
+from   . import commands, keymap
+from   . import model as mdl
 from   . import view as vw
 from   .curses_keyboard import get_key
 from   .lib import log
-from   .model import Model, save_model
+from   .model import Model
 from   .text import pad, palide
 import curses.textpad
 
@@ -62,11 +65,11 @@ def render_cmd(win, screen):
     y = screen.size.y - screen.cmd_size
 
     cmds = screen.cmd_output.splitlines()
-    assert len(cmds) == screen.cmd_size
+    assert len(cmds) <= screen.cmd_size
     for cmd in cmds:
         # FIXME: Writing the bottom-right corner causes an error, which is
         # why we use x - 1.
-        win.addstr(y, 0, pad(cmd, x - 1), Attrs.status)
+        win.addstr(y, 0, pad(cmd, x - 1))
         y += 1
 
 
@@ -197,10 +200,10 @@ def curses_screen():
 
 
 class Attrs:
+
     pass
 
-class EscapeInterrupt(Exception):
-    pass
+
 
 def init_attrs():
     curses.start_color()
@@ -220,6 +223,7 @@ def init_attrs():
     Attrs.status = Attrs.normal | curses.A_REVERSE
     Attrs.cmd = Attrs.normal | curses.A_REVERSE
 
+
 #-------------------------------------------------------------------------------
 
 def load_test(path):
@@ -235,13 +239,23 @@ def load_test(path):
     return model
 
 
+class EscapeInterrupt(Exception):
+
+    pass
+
+
+
 def cmd_input(screen, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
+
+    @return
+      The input text.
+    @raise EscapeInterrupt
+      User cancelled the edit with C-c or C-g.
     """
     def translate(c):
-        logging.info("translace {}".format(c))
-        if c == 7:  # C-g
+        if c in {3, 7}:  # C-g
             raise EscapeInterrupt()
         else:
             return {
@@ -258,104 +272,76 @@ def cmd_input(screen, stdscr, prompt=""):
     curses.curs_set(True)
     # Run it.
     try:
-        input = box.edit(translate).strip()
-        result = True, input
-    except EscapeInterrupt:
-        result = False, None
+        result = box.edit(translate)
     finally:
         curses.curs_set(False)
+    # Not sure why, but edit() always leaves a space at the end.
+    if len(result) > 0:
+        assert result[-1] == " "
+        return result[: -1]
+    else:
+        return result
 
-    return result
 
+#-------------------------------------------------------------------------------
 
-
-def next_event(model, view, screen, stdscr):
+def next_event(model, view, screen, stdscr, key_map):
     """
-    Waits for, then processes the next UI event.
+    Waits for, then processes the next UI event according to key_map.
+
+    Handles multi-character key combos.
 
     @raise KeyboardInterrupt
       The program should terminate.
     """
-    extended_key = False
-    key, arg = get_key(stdscr)
+    # Accumulate prefix keys.
+    prefix = ()
 
-    logging.info("key: {!r} {!r}".format(key, arg))
+    # Loop until we have a complete combo.
+    while True:
+        screen.cmd_output = " ".join(prefix)
+        render_cmd(stdscr, screen)
 
-    screen.cmd = None
-
-    if key == 'C-x':
-        extended_key = True
         key, arg = get_key(stdscr)
-        logging.info("key: {!r} {!r}".format(key, arg))
+        logging.debug("key: {!r} {!r}".format(key, arg))
+        screen.cmd_output = None
 
-    # Process Ctrl-X
-    if extended_key:
-        # Save.
-        if key in ("C-a", "C-s"):
-            # save-as
-            if key == "C-a":
-                success, filename = cmd_input(screen, stdscr,
-                                              prompt='Save file (%s): ' % model.filename)
-                filename = filename or model.filename
-            # regular save.
-            else:
-                success = True
-                filename = model.filename
+        combo = prefix + (key, )
+        try:
+            fn = key_map[combo]
 
-            if success:
-                save_msg = "Saving {}...".format(filename)
-                screen.cmd = save_msg
+        except KeyError:
+            # Unknown combo.
+            # FIXME: Indicate this in the UI: flash?
+            logging.debug("unknown combo: {}".format(" ".join(combo)))
+            return None
 
-                save_model(model, filename)
-                save_msg += ' Done.'
-                set_cmd(stdscr, screen, save_msg)
-        return
-
-    # Cursor movement.
-    if key == "LEFT":
-        vw.move_cur(view, dc=-1)
-    elif key == "RIGHT":
-        vw.move_cur(view, dc=+1)
-    elif key == "UP":
-        vw.move_cur(view, dr=-1)
-    elif key == "DOWN":
-        vw.move_cur(view, dr=+1)
-    elif key == "LEFTCLICK":
-        x, y = arg
-        vw.move_cur_to_coord(view, x, y)
-
-    # Scrolling.
-    elif key == "S-LEFT":
-        vw.scroll(view, dx=-1)
-    elif key == "S-RIGHT":
-        vw.scroll(view, dx=+1)
-
-    elif key == "M-#":
-        view.show_row_num = not view.show_row_num
-
-    elif key == "C-k":
-        model.delete_row(view.cur.r, set_undo=True)
-
-    elif key == "C-z":
-        undo_result = model.undo()
-        if not undo_result:
-            set_cmd(stdscr, screen, 'Undo stack empty!')
         else:
-            set_cmd(stdscr, screen, 'Undo!')
-
-    elif key == "M-x":
-        input_str = cmd_input(screen, stdscr, "command: ")
-        logging.warning (input_str)
-
-    elif key == "q":
-        raise KeyboardInterrupt()
-
-    elif key == "RESIZE":
-        sx, sy = arg
-        set_size(screen, sx, sy)
+            if fn is None:
+                # It's a prefix.
+                prefix = combo
+            else:
+                # Got a key binding.  Bind arguments by name.
+                logging.debug("known combo: {}".format(" ".join(combo)))
+                try:
+                    args = commands.bind_args(
+                        fn, 
+                        {
+                            "model" : model, 
+                            "view"  : view, 
+                            "screen": screen, 
+                            "arg"   : arg,
+                        },
+                        lambda p: cmd_input(screen, stdscr, prompt=p + ": ")
+                    )
+                except EscapeInterrupt:
+                    return None
+                return fn(**args)
 
 
 def main_loop(model, view, screen):
+    key_map = keymap.get_default()
+
     with log.replay(), curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
         set_size(screen, sx, sy)
@@ -368,13 +354,13 @@ def main_loop(model, view, screen):
             render_screen(stdscr, screen, model)
             # Process the next UI event.
             try:
-                next_event(model, view, screen, stdscr)
+                next_event(model, view, screen, stdscr, key_map)
             except KeyboardInterrupt:
                 break
 
 
 def main(filename=None):
-    logging.basicConfig(filename="log", level=logging.INFO)
+    logging.basicConfig(filename="log", level=logging.DEBUG)
 
     model = load_test(filename or sys.argv[1])
     view = vw.View(model)
