@@ -10,7 +10,7 @@ import sys
 
 from   . import commands, keymap
 from   . import model as mdl
-from   . import view as vw
+from   . import view
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .model import Model
@@ -24,9 +24,9 @@ class Screen:
     The display screen, including the table view and UI components.
     """
 
-    def __init__(self, view):
-        self.size = vw.Coordinates(80, 25)
-        self.view = view
+    def __init__(self, vw):
+        self.size = view.Coordinates(80, 25)
+        self.vw = vw
         self.status = "tbl " * 5
         self.status_size = 1
         self.cmd_size = 1
@@ -37,8 +37,8 @@ class Screen:
 def set_size(screen, sx, sy):
     screen.size.x = sx
     screen.size.y = sy
-    screen.view.size.x = sx
-    screen.view.size.y = sy - screen.status_size - screen.cmd_size
+    screen.vw.size.x = sx
+    screen.vw.size.y = sy - screen.status_size - screen.cmd_size
 
 
 def render_screen(win, screen, model):
@@ -53,7 +53,7 @@ def render_screen(win, screen, model):
         y += 1
 
     render_cmd(win, screen)
-    render_view(win, screen.view, model)
+    render_view(win, screen.vw, model)
 
 
 def render_cmd(win, screen):
@@ -72,29 +72,29 @@ def render_cmd(win, screen):
         y += 1
 
 
-def render_view(win, view, model):
+def render_view(win, vw, model):
     """
-    Renders `model` with view `view` in curses `win`.
+    Renders `model` with view `vw` in curses `win`.
     """
-    layout = vw.lay_out_columns(view)
-    layout = vw.shift_layout(layout, view.scr.x, view.size.x)
+    layout = view.lay_out_columns(vw)
+    layout = view.shift_layout(layout, vw.scr.x, vw.size.x)
 
     # Row numbers to draw.  
-    num_rows = min(view.size.y, model.num_rows - view.scr.y) 
+    num_rows = min(vw.size.y, model.num_rows - vw.scr.y) 
     # For the time being, we show a contiguous range of rows starting at y.
-    rows = np.arange(num_rows) + view.scr.y 
+    rows = np.arange(num_rows) + vw.scr.y 
 
-    if view.show_header:
+    if vw.show_header:
         # Make room for the header.
         rows[1 :] = rows[: -1]
         rows[0] = -1
 
     # The padding at the left and right of each field value.
-    pad = " " * view.pad
+    pad = " " * vw.pad
 
     # Now, draw.
     for x, w, type, z in layout:
-        c, r = view.cur
+        c, r = vw.cur
 
         # The item may be only partially visible.  Compute the start and stop
         # slice bounds to trim it to the screen.
@@ -103,8 +103,8 @@ def render_view(win, view, model):
             x = 0
         else:
             t0 = None
-        if x + w >= view.size.x:
-            t1 = view.size.x - x
+        if x + w >= vw.size.x:
+            t1 = vw.size.x - x
         else:
             t1 = None
 
@@ -119,8 +119,8 @@ def render_view(win, view, model):
         elif type == "col":
             # A column from the model.
             col = z
-            col_idx = view.order[col]
-            fmt = view.get_fmt(col_idx)
+            col_idx = vw.order[col]
+            fmt = vw.get_fmt(col_idx)
             arr = model.get_col(col_idx).arr
 
             for y, row in enumerate(rows):
@@ -284,7 +284,7 @@ def cmd_input(screen, stdscr, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_event(model, view, screen, stdscr, key_map):
+def next_event(model, vw, screen, stdscr, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -327,7 +327,7 @@ def next_event(model, view, screen, stdscr, key_map):
                         fn, 
                         {
                             "model" : model, 
-                            "view"  : view, 
+                            "vw"  : vw, 
                             "screen": screen, 
                             "arg"   : arg,
                         },
@@ -338,7 +338,7 @@ def next_event(model, view, screen, stdscr, key_map):
                 return fn(**args)
 
 
-def main_loop(model, view, screen):
+def main_loop(model, vw, screen):
     key_map = keymap.get_default()
 
     with log.replay(), curses_screen() as stdscr:
@@ -347,13 +347,13 @@ def main_loop(model, view, screen):
 
         while True:
             # Construct the status bar contents.
-            screen.status = vw.get_status(view, model, view.size.y)
+            screen.status = view.get_status(vw, model, vw.size.y)
             # Render the screen.
             stdscr.erase()
             render_screen(stdscr, screen, model)
             # Process the next UI event.
             try:
-                next_event(model, view, screen, stdscr, key_map)
+                next_event(model, vw, screen, stdscr, key_map)
             except KeyboardInterrupt:
                 break
 
@@ -362,9 +362,9 @@ def main(filename=None):
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
     model = load_test(filename or sys.argv[1])
-    view = vw.View(model)
-    screen = Screen(view)
-    main_loop(model, view, screen)
+    vw = view.View(model)
+    screen = Screen(vw)
+    main_loop(model, vw, screen)
 
 
 if __name__ == "__main__":
