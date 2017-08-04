@@ -32,37 +32,37 @@ class Screen:
 
 
 
-def set_size(screen, sx, sy):
-    screen.size.x = sx
-    screen.size.y = sy
-    screen.vw.size.x = sx
-    screen.vw.size.y = sy - screen.status_size - screen.cmd_size
+def set_size(scr, sx, sy):
+    scr.size.x = sx
+    scr.size.y = sy
+    scr.vw.size.x = sx
+    scr.vw.size.y = sy - scr.status_size - scr.cmd_size
 
 
-def render_screen(win, screen, mdl):
-    x = screen.size.x
-    y = screen.size.y - screen.status_size - screen.cmd_size
+def render_screen(win, scr, mdl):
+    x = scr.size.x
+    y = scr.size.y - scr.status_size - scr.cmd_size
     
     # Draw the status bar.
-    status = screen.status.splitlines()
-    assert len(status) == screen.status_size
+    status = scr.status.splitlines()
+    assert len(status) == scr.status_size
     for line in status:
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
-    render_cmd(win, screen)
-    render_view(win, screen.vw, mdl)
+    render_cmd(win, scr)
+    render_view(win, scr.vw, mdl)
 
 
-def render_cmd(win, screen):
-    if not screen.cmd_output:
+def render_cmd(win, scr):
+    if not scr.cmd_output:
         return
 
-    x = screen.size.x
-    y = screen.size.y - screen.cmd_size
+    x = scr.size.x
+    y = scr.size.y - scr.cmd_size
 
-    cmds = screen.cmd_output.splitlines()
-    assert len(cmds) <= screen.cmd_size
+    cmds = scr.cmd_output.splitlines()
+    assert len(cmds) <= scr.cmd_size
     for cmd in cmds:
         # FIXME: Writing the bottom-right corner causes an error, which is
         # why we use x - 1.
@@ -242,7 +242,7 @@ class EscapeInterrupt(Exception):
 
 
 
-def cmd_input(screen, stdscr, prompt=""):
+def cmd_input(scr, stdscr, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
 
@@ -260,11 +260,11 @@ def cmd_input(screen, stdscr, prompt=""):
             }.get(c, c)
 
     # Draw the prompt.
-    y = screen.size.y - screen.cmd_size
+    y = scr.size.y - scr.cmd_size
     stdscr.addstr(y, 0, prompt)
     stdscr.refresh()
     # Create a text input in the rest of the cmd line.
-    win = curses.newwin(1, screen.size.x - len(prompt), y, len(prompt))
+    win = curses.newwin(1, scr.size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
     curses.curs_set(True)
     # Run it.
@@ -282,7 +282,7 @@ def cmd_input(screen, stdscr, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_event(mdl, vw, screen, stdscr, key_map):
+def next_event(mdl, vw, scr, stdscr, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -296,12 +296,12 @@ def next_event(mdl, vw, screen, stdscr, key_map):
 
     # Loop until we have a complete combo.
     while True:
-        screen.cmd_output = " ".join(prefix)
-        render_cmd(stdscr, screen)
+        scr.cmd_output = " ".join(prefix)
+        render_cmd(stdscr, scr)
 
         key, arg = get_key(stdscr)
         logging.debug("key: {!r} {!r}".format(key, arg))
-        screen.cmd_output = None
+        scr.cmd_output = None
 
         combo = prefix + (key, )
         try:
@@ -326,32 +326,32 @@ def next_event(mdl, vw, screen, stdscr, key_map):
                         {
                             "mdl"   : mdl, 
                             "vw"    : vw, 
-                            "screen": screen, 
+                            "scr"   : scr, 
                             "arg"   : arg,
                         },
-                        lambda p: cmd_input(screen, stdscr, prompt=p + ": ")
+                        lambda p: cmd_input(scr, stdscr, prompt=p + ": ")
                     )
                 except EscapeInterrupt:
                     return None
                 return fn(**args)
 
 
-def main_loop(mdl, vw, screen):
+def main_loop(mdl, vw, scr):
     key_map = keymap.get_default()
 
     with log.replay(), curses_screen() as stdscr:
         sy, sx = stdscr.getmaxyx()
-        set_size(screen, sx, sy)
+        set_size(scr, sx, sy)
 
         while True:
             # Construct the status bar contents.
-            screen.status = view.get_status(vw, mdl, vw.size.y)
+            scr.status = view.get_status(vw, mdl, vw.size.y)
             # Render the screen.
             stdscr.erase()
-            render_screen(stdscr, screen, mdl)
+            render_screen(stdscr, scr, mdl)
             # Process the next UI event.
             try:
-                next_event(mdl, vw, screen, stdscr, key_map)
+                next_event(mdl, vw, scr, stdscr, key_map)
             except KeyboardInterrupt:
                 break
 
@@ -361,8 +361,8 @@ def main(filename=None):
 
     mdl = load_test(filename or sys.argv[1])
     vw = view.View(mdl)
-    screen = Screen(vw)
-    main_loop(mdl, vw, screen)
+    scr = Screen(vw)
+    main_loop(mdl, vw, scr)
 
 
 if __name__ == "__main__":

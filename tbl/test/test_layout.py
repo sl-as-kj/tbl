@@ -1,7 +1,7 @@
 from   collections import OrderedDict as odict
 import numpy as np
 
-from   tbl.screen import Model
+from   tbl.model import Model
 from   tbl.view import View, lay_out_columns
 
 #-------------------------------------------------------------------------------
