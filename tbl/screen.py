@@ -8,12 +8,10 @@ import numpy as np
 import os
 import sys
 
-from   . import commands, keymap
-from   . import model as mdl
+from   . import commands, keymap, model
 from   . import view
 from   .curses_keyboard import get_key
 from   .lib import log
-from   .model import Model
 from   .text import pad, palide
 import curses.textpad
 
@@ -41,7 +39,7 @@ def set_size(screen, sx, sy):
     screen.vw.size.y = sy - screen.status_size - screen.cmd_size
 
 
-def render_screen(win, screen, model):
+def render_screen(win, screen, mdl):
     x = screen.size.x
     y = screen.size.y - screen.status_size - screen.cmd_size
     
@@ -53,7 +51,7 @@ def render_screen(win, screen, model):
         y += 1
 
     render_cmd(win, screen)
-    render_view(win, screen.vw, model)
+    render_view(win, screen.vw, mdl)
 
 
 def render_cmd(win, screen):
@@ -72,15 +70,15 @@ def render_cmd(win, screen):
         y += 1
 
 
-def render_view(win, vw, model):
+def render_view(win, vw, mdl):
     """
-    Renders `model` with view `vw` in curses `win`.
+    Renders `mdl` with view `vw` in curses `win`.
     """
     layout = view.lay_out_columns(vw)
     layout = view.shift_layout(layout, vw.scr.x, vw.size.x)
 
     # Row numbers to draw.  
-    num_rows = min(vw.size.y, model.num_rows - vw.scr.y) 
+    num_rows = min(vw.size.y, mdl.num_rows - vw.scr.y) 
     # For the time being, we show a contiguous range of rows starting at y.
     rows = np.arange(num_rows) + vw.scr.y 
 
@@ -121,7 +119,7 @@ def render_view(win, vw, model):
             col = z
             col_idx = vw.order[col]
             fmt = vw.get_fmt(col_idx)
-            arr = model.get_col(col_idx).arr
+            arr = mdl.get_col(col_idx).arr
 
             for y, row in enumerate(rows):
                 attr = (
@@ -132,7 +130,7 @@ def render_view(win, vw, model):
                 )
                 if row == -1:
                     # Header.
-                    text = palide(model.get_col(col_idx).name, w, elide_pos=0.7)
+                    text = palide(mdl.get_col(col_idx).name, w, elide_pos=0.7)
                     attr |= curses.A_UNDERLINE
                 else:
                     text = (pad + fmt(arr[row]) + pad)
@@ -232,10 +230,10 @@ def load_test(path):
         rows = iter(reader)
         names = next(rows)
         arrs = zip(*list(rows))
-    model = Model(path)
+    mdl = model.Model(path)
     for arr, name in zip(arrs, names):
-        model.add_col(arr, name)
-    return model
+        mdl.add_col(arr, name)
+    return mdl
 
 
 class EscapeInterrupt(Exception):
@@ -284,7 +282,7 @@ def cmd_input(screen, stdscr, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_event(model, vw, screen, stdscr, key_map):
+def next_event(mdl, vw, screen, stdscr, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -326,8 +324,8 @@ def next_event(model, vw, screen, stdscr, key_map):
                     args = commands.bind_args(
                         fn, 
                         {
-                            "model" : model, 
-                            "vw"  : vw, 
+                            "mdl"   : mdl, 
+                            "vw"    : vw, 
                             "screen": screen, 
                             "arg"   : arg,
                         },
@@ -338,7 +336,7 @@ def next_event(model, vw, screen, stdscr, key_map):
                 return fn(**args)
 
 
-def main_loop(model, vw, screen):
+def main_loop(mdl, vw, screen):
     key_map = keymap.get_default()
 
     with log.replay(), curses_screen() as stdscr:
@@ -347,13 +345,13 @@ def main_loop(model, vw, screen):
 
         while True:
             # Construct the status bar contents.
-            screen.status = view.get_status(vw, model, vw.size.y)
+            screen.status = view.get_status(vw, mdl, vw.size.y)
             # Render the screen.
             stdscr.erase()
-            render_screen(stdscr, screen, model)
+            render_screen(stdscr, screen, mdl)
             # Process the next UI event.
             try:
-                next_event(model, vw, screen, stdscr, key_map)
+                next_event(mdl, vw, screen, stdscr, key_map)
             except KeyboardInterrupt:
                 break
 
@@ -361,10 +359,10 @@ def main_loop(model, vw, screen):
 def main(filename=None):
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
-    model = load_test(filename or sys.argv[1])
-    vw = view.View(model)
+    mdl = load_test(filename or sys.argv[1])
+    vw = view.View(mdl)
     screen = Screen(vw)
-    main_loop(model, vw, screen)
+    main_loop(mdl, vw, screen)
 
 
 if __name__ == "__main__":

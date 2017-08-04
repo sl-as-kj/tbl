@@ -57,14 +57,14 @@ def choose_fmt(arr):
 class View(object):
     # FIXME: Interim.
 
-    def __init__(self, model):
+    def __init__(self, mdl):
         # Displayed col order.  Also controls col visibility: not all cols
         # need be included.
-        self.order  = [ c.id for c in model.cols ]
+        self.order  = [ c.id for c in mdl.cols ]
         # Mapping from col ID to col formatter.
-        self.fmt    = { c.id: choose_fmt(c.arr) for c in model.cols }
+        self.fmt    = { c.id: choose_fmt(c.arr) for c in mdl.cols }
         # Number of rows.
-        self.num_rows = model.num_rows
+        self.num_rows = mdl.num_rows
 
         # Window size.
         self.size = Coordinates(80, 25)
@@ -176,11 +176,11 @@ def find_col_in_layout(layout, col_id):
         return None
 
 
-def get_status(vw, model, sy):
+def get_status(vw, mdl, sy):
     """
     Writes the status bar text.
     """
-    col = model.get_col(vw.order[vw.cur.c])
+    col = mdl.get_col(vw.order[vw.cur.c])
     val = col.arr[vw.cur.r]
     return "row {:6d}, {} col '{}' value {!r}".format(
         vw.cur.r, col.arr.dtype, col.name, val)

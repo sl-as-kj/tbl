@@ -137,12 +137,12 @@ class Model:
         return iter(self.__cols)
 
 
-def save_model(model, filename):
+def save_model(mdl, filename):
     """
     Save the model to a file.
     TODO: This needs a lot of work to preserve
     formatting, etc.
-    :param model:
+    :param mdl:
     :param filename:
     :param new_filename:
     :return:
@@ -150,24 +150,24 @@ def save_model(model, filename):
     with open(filename, 'w') as csvfile:
         writer = csv.writer(csvfile)
         # write header
-        header = [col.name for col in model.cols]
+        header = [col.name for col in mdl.cols]
         writer.writerow(header)
         # write rows.
-        for row_num in range(model.num_rows):
-            row = [str(c.arr[row_num]) for c in model.cols]
+        for row_num in range(mdl.num_rows):
+            row = [str(c.arr[row_num]) for c in mdl.cols]
             writer.writerow(row)
 
 
 #-------------------------------------------------------------------------------
 
-def cmd_save(model):
-    save_model(model, model.filename)
+def cmd_save(mdl):
+    save_model(mdl, mdl.filename)
 
 
 @param("filename", "save file as")
-def cmd_save_as(model, filename):
+def cmd_save_as(mdl, filename):
     if len(filename) > 0:
-        save_model(model, filename)
-        model.filename = filename
+        save_model(mdl, filename)
+        mdl.filename = filename
 
 

@@ -1,9 +1,7 @@
 from   functools import partial
 
-from   . import commands
-from   . import model as mdl
+from   . import commands, model, view
 from   . import screen as scr
-from   . import view
 
 #-------------------------------------------------------------------------------
 
@@ -36,11 +34,11 @@ def get_default():
         "S-LEFT"        : partial(view.scroll, dx=-1),
         "S-RIGHT"       : partial(view.scroll, dx=+1),
         "M-#"           : partial(view.toggle_show_row_num),
-        "C-k"           : lambda model, vw: model.delete_row(vw.cur.r, set_undo=True),
+        "C-k"           : lambda mdl, vw: mdl.delete_row(vw.cur.r, set_undo=True),
         "C-x"           : None,
-        ("C-x", "C-s")  : mdl.cmd_save,
-        ("C-x", "C-w")  : mdl.cmd_save_as,
-        "C-z"           : lambda model: model.undo(),
+        ("C-x", "C-s")  : model.cmd_save,
+        ("C-x", "C-w")  : model.cmd_save_as,
+        "C-z"           : lambda mdl: mdl.undo(),
         "q"             : commands.cmd_quit,
         "RESIZE"        : lambda screen, arg: scr.set_size(screen, arg[0], arg[1]),
     })
