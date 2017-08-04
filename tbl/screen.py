@@ -162,15 +162,15 @@ def curses_screen():
     # directly with ctypes.
     os.environ["ESCDELAY"] = "0"
 
-    stdscr = curses.initscr()
+    win = curses.initscr()
     curses.noecho()
     curses.cbreak()
     curses.curs_set(False)
     curses.raw()
 
-    stdscr.keypad(True)
-    stdscr.notimeout(True)
-    stdscr.nodelay(True)
+    win.keypad(True)
+    win.notimeout(True)
+    win.nodelay(True)
 
     # Enable mouse events.
     mouse_mask = curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
@@ -183,11 +183,11 @@ def curses_screen():
     init_attrs()
 
     try:
-        yield stdscr
+        yield win
     finally:
-        stdscr.nodelay(False)
-        stdscr.notimeout(False)
-        stdscr.keypad(False)
+        win.nodelay(False)
+        win.notimeout(False)
+        win.keypad(False)
 
         curses.noraw()
         curses.curs_set(True)
@@ -242,7 +242,7 @@ class EscapeInterrupt(Exception):
 
 
 
-def cmd_input(scr, stdscr, prompt=""):
+def cmd_input(scr, win, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
 
@@ -261,8 +261,8 @@ def cmd_input(scr, stdscr, prompt=""):
 
     # Draw the prompt.
     y = scr.size.y - scr.cmd_size
-    stdscr.addstr(y, 0, prompt)
-    stdscr.refresh()
+    win.addstr(y, 0, prompt)
+    win.refresh()
     # Create a text input in the rest of the cmd line.
     win = curses.newwin(1, scr.size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
@@ -282,7 +282,7 @@ def cmd_input(scr, stdscr, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_event(mdl, vw, scr, stdscr, key_map):
+def next_event(mdl, vw, scr, win, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -297,9 +297,9 @@ def next_event(mdl, vw, scr, stdscr, key_map):
     # Loop until we have a complete combo.
     while True:
         scr.cmd_output = " ".join(prefix)
-        render_cmd(stdscr, scr)
+        render_cmd(win, scr)
 
-        key, arg = get_key(stdscr)
+        key, arg = get_key(win)
         logging.debug("key: {!r} {!r}".format(key, arg))
         scr.cmd_output = None
 
@@ -329,7 +329,7 @@ def next_event(mdl, vw, scr, stdscr, key_map):
                             "scr"   : scr, 
                             "arg"   : arg,
                         },
-                        lambda p: cmd_input(scr, stdscr, prompt=p + ": ")
+                        lambda p: cmd_input(scr, win, prompt=p + ": ")
                     )
                 except EscapeInterrupt:
                     return None
@@ -339,19 +339,19 @@ def next_event(mdl, vw, scr, stdscr, key_map):
 def main_loop(mdl, vw, scr):
     key_map = keymap.get_default()
 
-    with log.replay(), curses_screen() as stdscr:
-        sy, sx = stdscr.getmaxyx()
+    with log.replay(), curses_screen() as win:
+        sy, sx = win.getmaxyx()
         set_size(scr, sx, sy)
 
         while True:
             # Construct the status bar contents.
             scr.status = view.get_status(vw, mdl, vw.size.y)
             # Render the screen.
-            stdscr.erase()
-            render_screen(stdscr, scr, mdl)
+            win.erase()
+            render_screen(win, scr, mdl)
             # Process the next UI event.
             try:
-                next_event(mdl, vw, scr, stdscr, key_map)
+                next_event(mdl, vw, scr, win, key_map)
             except KeyboardInterrupt:
                 break
 
