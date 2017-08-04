@@ -41,7 +41,6 @@ def set_size(screen, sx, sy):
     screen.view.size.y = sy - screen.status_size - screen.cmd_size
 
 
-
 def render_screen(win, screen, model):
     x = screen.size.x
     y = screen.size.y - screen.status_size - screen.cmd_size
