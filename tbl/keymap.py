@@ -1,9 +1,22 @@
+"""
+Mapping from key combos to commands
+
+A key map is a mapping from keys or key combos to commands.  The keys may
+be single key codes, or sequence of key codes for key combos.  The values
+are commands.  A value of `PREFIX` indicates a prefix key; each prefix of a 
+a key combo must be tagged as a prefix in this way.
+"""
+
+#-------------------------------------------------------------------------------
+
 from   functools import partial
 
 from   . import commands, controller, model, view
 from   . import screen as scr
 
 #-------------------------------------------------------------------------------
+
+PREFIX = object()
 
 def check_key_map(key_map):
     # Convert single character keys to tuples, for convenience.
@@ -16,7 +29,7 @@ def check_key_map(key_map):
     for combo in [ k for k in key_map if len(k) > 1 ]:
         prefix = combo[: -1]
         while len(prefix) > 1:
-            if key_map.setdefault(prefix, None) is not None:
+            if key_map.setdefault(prefix, None) is not PREFIX:
                 raise ValueError(
                     "combo {} but not prefix {}".format(combo, prefix))
             prefix = prefix[: -1]
@@ -25,6 +38,9 @@ def check_key_map(key_map):
 
 
 def get_default():
+    """
+    Returns the default key map.
+    """
     return check_key_map({
         "LEFT"          : partial(view.cmd_move_cur, dc=-1),
         "RIGHT"         : partial(view.cmd_move_cur, dc=+1),
@@ -35,7 +51,7 @@ def get_default():
         "S-RIGHT"       : partial(view.cmd_scroll, dx=+1),
         "M-#"           : view.cmd_toggle_show_row_num,
         "C-k"           : controller.cmd_delete_row,
-        "C-x"           : None,
+        "C-x"           : PREFIX,
         ("C-x", "C-s")  : model.cmd_save,
         ("C-x", "C-w")  : model.cmd_save_as,
         "C-z"           : controller.cmd_undo,

@@ -23,10 +23,10 @@ def cmd_undo(ctl):
         cmd()
 
 
-def cmd_delete_row(mdl, vw):
+def cmd_delete_row(ctl, vw):
     row_num = vw.cur.r
-    row     = model.delete_row(mdl, row_num)
-    undo    = lambda: model.insert_row(mdl, row_num, row)
-    return CmdResult(undo=undo)
+    row     = model.delete_row(ctl.mdl, row_num)
+    undo    = lambda: model.insert_row(ctl.mdl, row_num, row)
+    ctl.undo.append(undo)
 
 

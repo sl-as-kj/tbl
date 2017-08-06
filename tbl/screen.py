@@ -325,8 +325,6 @@ def do_cmd(ctl, scr, win, arg, cmd):
         if result is None:
             result = commands.CmdResult()
         logging.info("result -> {}".format(result))
-        if result.undo is not None:
-            ctl.undo.append(result.undo)
         if result.msg is not None:
             # FIXME: Show message.
             log.info("command message: {}".format(result.msg))
