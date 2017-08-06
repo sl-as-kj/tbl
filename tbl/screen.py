@@ -28,6 +28,7 @@ class Screen:
         self.status = "tbl " * 5
         self.status_size = 1
         self.cmd_size = 1
+        self.error = None
         self.output = None
 
 
@@ -50,23 +51,29 @@ def render_screen(win, scr, mdl):
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
-    render_cmd(win, scr)
+    render_output(win, scr)
     render_view(win, scr.vw, mdl)
 
 
-def render_cmd(win, scr):
-    if not scr.output:
+def render_output(win, scr):
+    if scr.error:
+        text = scr.error
+        attr = Attrs.error
+    elif scr.output:
+        text = scr.output
+        attrs = Attrs.normal
+    else:
         return
 
     x = scr.size.x
     y = scr.size.y - scr.cmd_size
 
-    cmds = scr.output.splitlines()
-    assert len(cmds) <= scr.cmd_size
-    for cmd in cmds:
+    lines = text.splitlines()
+    assert len(lines) <= scr.cmd_size
+    for line in lines:
         # FIXME: Writing the bottom-right corner causes an error, which is
         # why we use x - 1.
-        win.addstr(y, 0, pad(cmd, x - 1))
+        win.addstr(y, 0, pad(line, x - 1), attr)
         y += 1
 
 
@@ -217,6 +224,9 @@ def init_attrs():
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
     Attrs.cur_row = curses.color_pair(3)
 
+    curses.init_pair(4, curses.COLOR_RED, -1)
+    Attrs.error = curses.color_pair(4)
+
     Attrs.status = Attrs.normal | curses.A_REVERSE
     Attrs.cmd = Attrs.normal | curses.A_REVERSE
 
@@ -288,10 +298,10 @@ def next_cmd(scr, win, key_map):
         scr.output = " ".join(prefix) + " ..." if len(prefix) > 0 else None
 
         # Wait for the next UI event.
-        render_cmd(win, scr)
+        render_output(win, scr)
         key, arg = get_key(win)
         logging.debug("key: {!r} {!r}".format(key, arg))
-        scr.output = None
+        scr.output = scr.error = None
 
         # Handle special UI events.
         if key == "RESIZE":
@@ -307,8 +317,8 @@ def next_cmd(scr, win, key_map):
 
         except KeyError:
             # Unknown combo.
-            # FIXME: Indicate this in the UI: flash?
             logging.debug("unknown combo: {}".format(" ".join(combo)))
+            curses.beep()
             # Start over.
             prefix = ()
             continue
@@ -362,7 +372,8 @@ def main_loop(ctl, scr):
             try:
                 result = run(cmd_name, cmd_args, input)
             except CmdError as exc:
-                scr.output = "error: {}".format(exc)
+                scr.error = "error: {}".format(exc)
+                curses.beep()
             else:
                 logging.info("command result: {}".format(result))
                 if result.msg is not None:
