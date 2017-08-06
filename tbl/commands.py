@@ -59,12 +59,6 @@ class CmdError(Exception):
 
 
 
-class InputInterrupt(Exception):
-
-    pass
-
-
-
 #-------------------------------------------------------------------------------
 
 class Command:
