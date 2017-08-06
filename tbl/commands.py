@@ -25,13 +25,13 @@ named "name":
         ...
     ``` 
 
-The command should perform the appropriate action, and may either,
+The command should perform the appropriate action, and may,
 
 1. Return `CmdResult` to indicate success.  The result object may optionally
    carry a status message to show to the user, and an undo function (of no
    arguments) to add to the undo stack.
 
-   A return of `None` is treated as a default `CmdResult`.
+1. Return of `None`.  This is treated as a default `CmdResult`.
 
 1. Raise `CmdError`to indicate failure.
 
@@ -79,6 +79,7 @@ class Command:
         result = self.fn(**args)
         if result is None:
             result = CmdResult()
+        assert isinstance(result, CmdResult)
         return result
 
 
