@@ -17,7 +17,7 @@ A command have additional parameters; when the command is executed, the user is
 prompted for values for these.
 
 For example, this command operates on the model, and an additional argument
-named "data":
+named "name":
 
     ```
     @command()
