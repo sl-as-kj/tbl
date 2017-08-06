@@ -23,13 +23,11 @@ class Model:
 
     def __init__(self, filename):
         # Columns, in order.
-        self.cols         = []
+        self.cols       = []
         # Number of rows in the table, or None if no columns so far.
         # FIXME: Make a property?
-        self.num_rows     = None
-
-        self.__undo_info = []
-        self.filename = filename
+        self.num_rows   = None
+        self.filename   = filename
 
 
     def add_col(self, arr, name=None, *, position=None):
@@ -53,56 +51,6 @@ class Model:
         # Add the col.
         col = self.Col(arr, name=name)
         self.cols.insert(position, col)
-
-    def delete_row(self, row_num, set_undo=False):
-        """
-        delete a row from the model
-        :param row_num:
-        :return:
-        """
-
-        # do not allow deletion of the last row for now.
-        if self.num_rows <= 1:
-            return
-
-        row = [c.arr[row_num] for c in self.cols]
-        for c in self.cols:
-            c.arr = np.delete(c.arr, row_num)
-
-        self.num_rows -= 1
-
-        if set_undo:
-            self.__undo_info.append((self.insert_row, {'row_num': row_num, 'row': row}))
-
-    def insert_row(self, row_num, row, set_undo=False):
-        """
-        insert a row
-        :param row_num: where to insert the row.
-        :param row: list of things to insert into each column
-        :return:
-        """
-        if len(row) != self.num_cols:
-            raise ValueError("row is wrong length")
-
-        for c_idx,c in enumerate(self.cols):
-            c.arr = np.insert(c.arr, row_num, row[c_idx])
-        self.num_rows += 1
-        if set_undo:
-            self.__undo_info.append((self.delete_row, {'row_num': row_num}))
-
-
-    def undo(self):
-        """
-        simplest undo: pop the undo info from the undo stack and execute it.
-        :return:
-        """
-        if not len(self.__undo_info):
-            return False
-
-        func, kwargs = self.__undo_info.pop()
-        func(**kwargs)
-
-        return True
 
 
     def get_col(self, col_id):
