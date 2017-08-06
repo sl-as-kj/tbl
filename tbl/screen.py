@@ -357,7 +357,13 @@ def main_loop(ctl, scr):
 
         while True:
             # Construct the status bar contents.
-            scr.status = view.get_status(vw, mdl, vw.size.y)
+            sl, sr = view.get_status(vw, mdl)
+            extra = vw.size.x - len(sl) - len(sr)
+            if extra >= 0:
+                scr.status = sl + " " * extra + sr
+            else:
+                scr.status = sl[: extra] + sr
+
             # Render the screen.
             win.erase()
             render_screen(win, scr, mdl)

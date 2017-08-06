@@ -177,14 +177,22 @@ def find_col_in_layout(layout, col_id):
         return None
 
 
-def get_status(vw, mdl, sy):
+def get_status(vw, mdl):
     """
     Writes the status bar text.
+
+    @return
+      The left- and right-justified portions of the text.
     """
-    col = mdl.get_col(vw.order[vw.cur.c])
-    val = col.arr[vw.cur.r]
-    return "row {:6d}, {} col '{}' value {!r}".format(
-        vw.cur.r, col.arr.dtype, col.name, val)
+    col     = mdl.get_col(vw.order[vw.cur.c])
+    row_num = vw.cur.r
+    val     = col.arr[vw.cur.r]
+    dtype   = col.arr.dtype
+
+    return (
+        "{} [{}]".format(val, dtype),
+        "{} {:6d}".format(col.name, row_num)
+    )
 
 
 #-------------------------------------------------------------------------------
