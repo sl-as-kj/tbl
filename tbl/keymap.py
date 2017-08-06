@@ -1,10 +1,10 @@
 """
 Mapping from key combos to commands
 
-A key map is a mapping from keys or key combos to commands.  The keys may
-be single key codes, or sequence of key codes for key combos.  The values
-are commands.  A value of `PREFIX` indicates a prefix key; each prefix of a 
-a key combo must be tagged as a prefix in this way.
+A key map is a mapping from keys or key combos to command names.  The keys may
+be single key codes, or sequence of key codes for key combos.  The values are
+commands.  A value of `PREFIX` indicates a prefix key; each prefix of a a key
+combo must be tagged as a prefix in this way.
 """
 
 #-------------------------------------------------------------------------------
@@ -49,7 +49,11 @@ def get_default():
         "S-LEFT"        : "scroll-left",
         "S-RIGHT"       : "scroll-right",
         "M-#"           : "toggle-show-row-num",
+        "C-b"           : "move-left",   # back
+        "C-f"           : "move-right",  # forward
         "C-k"           : "delete-row",
+        "C-p"           : "move-up",     # previous
+        "C-n"           : "move-down",   # next
 
         "C-x"           : PREFIX,
         ("C-x", "C-s")  : "save",

@@ -320,7 +320,7 @@ def next_cmd(scr, win, key_map):
                 continue
             else:
                 logging.debug(
-                    "known combo: {} -> {}".format(" ".join(combo), cmd_name))
+                    "combo: {} -> {}".format(" ".join(combo), cmd_name))
                 return cmd_name
 
 
@@ -360,7 +360,7 @@ def main_loop(ctl, scr):
             except CmdError as exc:
                 scr.output = "error: {}".format(exc)
             else:
-                logging.info("result -> {}".format(result))
+                logging.info("command result: {}".format(result))
                 if result.msg is not None:
                     logging.info("command message: {}".format(result.msg))
                     scr.output = result.msg

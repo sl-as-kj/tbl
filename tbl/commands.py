@@ -1,24 +1,26 @@
 """
 Command interface
 
-A command is a function whose name starts with `cmd_.` It may have any of these
-named parameters:
+Commands are named, user-accessible operations.  To create a command, decorate a
+function with the `@command()` decorator.  The name of the command is
+constructed from the function name.
 
-- `mdl` - the model
-- `ctl` - the controller
-- `vw`  - the view
-- `scr` - the screen
-- `arg` - the argument to the UI event
+The function may take any of these arguments:
 
-A command may declare additional user-specified parameters using the `param`
-decorator.  When the command is executed, the user is prompted for values for
-these parameters.  Any other function arguments must be bound.
+  - `mdl` -- the model
+  - `ctl` -- the controller
+  - `vw`  -- the view
+  - `scr` -- the screen
+  - `arg` -- the argument to the UI event
+
+A command have additional parameters; when the command is executed, the user is
+prompted for values for these.
 
 For example, this command operates on the model, and an additional argument
 named "data":
 
     ```
-    @param("name", "column name")
+    @command()
     def rename(mdl, name):
         ...
     ``` 
@@ -83,15 +85,11 @@ class Command:
 
 commands = {}
 
-def command(name=None):
-    assert not callable(name), "you probably meant @command()"
-
+def command():
     def register(fn):
         params = tuple(inspect.signature(fn).parameters)
 
-        nonlocal name
-        if name is None:
-            name = fn.__name__.replace("_", "-")
+        name = fn.__name__.replace("_", "-")
         if name in commands:
             raise ValueError("command name {} already used".format(name))
 
