@@ -1,14 +1,25 @@
-from   functools import partial
+"""
+Mapping from key combos to commands
 
-from   . import commands
-from   . import model as mdl
-from   . import screen as scr
-from   . import view as vw
+A key map is a mapping from keys or key combos to command names.  The keys may
+be single key codes, or sequence of key codes for key combos.  The values are
+commands.  A value of `PREFIX` indicates a prefix key; each prefix of a a key
+combo must be tagged as a prefix in this way.
+"""
 
 #-------------------------------------------------------------------------------
 
-def check_key_map(key_map):
-    # Convert single character keys to tuples, for convenience.
+from   functools import partial
+
+from   . import commands, controller, io, model, view
+from   . import screen as scr
+
+#-------------------------------------------------------------------------------
+
+PREFIX = object()
+
+def build_key_map(key_map):
+    # Convert single character keys to tuples, as a convenience.
     key_map = {
         (k, ) if isinstance(k, str) else tuple( str(s) for s in k ): v
         for k, v in key_map.items()
@@ -18,7 +29,7 @@ def check_key_map(key_map):
     for combo in [ k for k in key_map if len(k) > 1 ]:
         prefix = combo[: -1]
         while len(prefix) > 1:
-            if key_map.setdefault(prefix, None) is not None:
+            if key_map.setdefault(prefix, None) is not PREFIX:
                 raise ValueError(
                     "combo {} but not prefix {}".format(combo, prefix))
             prefix = prefix[: -1]
@@ -27,22 +38,31 @@ def check_key_map(key_map):
 
 
 def get_default():
-    return check_key_map({
-        "LEFT"          : partial(vw.move_cur, dc=-1),
-        "RIGHT"         : partial(vw.move_cur, dc=+1),
-        "UP"            : partial(vw.move_cur, dr=-1),
-        "DOWN"          : partial(vw.move_cur, dr=+1),
-        "LEFTCLICK"     : lambda arg, view: vw.move_cur_to(view, arg[0], arg[1]),
-        "S-LEFT"        : partial(vw.scroll, dx=-1),
-        "S-RIGHT"       : partial(vw.scroll, dx=+1),
-        "M-#"           : partial(vw.toggle_show_row_num),
-        "C-k"           : lambda model, view: model.delete_row(view.cur.r, set_undo=True),
-        "C-x"           : None,
-        ("C-x", "C-s")  : mdl.cmd_save,
-        ("C-x", "C-w")  : mdl.cmd_save_as,
-        "C-z"           : lambda model: model.undo(),
-        "q"             : commands.cmd_quit,
-        "RESIZE"        : lambda screen, arg: scr.set_size(screen, arg[0], arg[1]),
+    """
+    Returns the default key map.
+    """
+    return build_key_map({
+        "LEFT"          : "move-left",
+        "RIGHT"         : "move-right",
+        "UP"            : "move-up",
+        "DOWN"          : "move-down",
+        "S-LEFT"        : "scroll-left",
+        "S-RIGHT"       : "scroll-right",
+
+        "C-b"           : "move-left",   # back
+        "C-f"           : "move-right",  # forward
+        "C-k"           : "delete-row",
+        "C-p"           : "move-up",     # previous
+        "C-n"           : "move-down",   # next
+        "C-x"           : PREFIX,
+        ("C-x", "C-s")  : "save",
+        ("C-x", "C-w")  : "save-as",
+        "C-z"           : "undo",
+
+        "M-#"           : "toggle-show-row-num",
+        "M-x"           : "command",
+
+        "q"             : "quit",
     })
 
 
