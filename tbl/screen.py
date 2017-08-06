@@ -16,6 +16,83 @@ from   .text import pad, palide
 import curses.textpad
 
 #-------------------------------------------------------------------------------
+# Curses setup
+
+@contextmanager
+def curses_screen():
+    """
+    Curses context manager.
+
+    Returns the screen window on entry.  Restores the terminal view on exit.
+    """
+    # Disable the curses ESC translation delay.
+    # FIXME: It might be possible to set the ESCDELAY variable in libncurses.so
+    # directly with ctypes.
+    os.environ["ESCDELAY"] = "0"
+
+    win = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    curses.curs_set(False)
+    curses.raw()
+
+    win.keypad(True)
+    win.notimeout(True)
+    win.nodelay(True)
+
+    # Enable mouse events.
+    mouse_mask = curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
+    new_mask, _ = curses.mousemask(mouse_mask)
+    if new_mask != mouse_mask:
+        logging.warning(
+            "problem with mouse support: {:x} {:x}"
+            .format(mouse_mask, new_mask))
+
+    init_attrs()
+
+    try:
+        yield win
+    finally:
+        win.nodelay(False)
+        win.notimeout(False)
+        win.keypad(False)
+
+        curses.noraw()
+        curses.curs_set(True)
+        curses.nocbreak()
+        curses.echo()
+        curses.endwin()
+
+
+class Attrs:
+
+    pass
+
+
+
+def init_attrs():
+    curses.start_color()
+    curses.use_default_colors()
+
+    Attrs.normal = curses.color_pair(0)
+
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+    Attrs.cur_pos = curses.color_pair(1)
+
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_col = curses.color_pair(2)
+
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    Attrs.cur_row = curses.color_pair(3)
+
+    curses.init_pair(4, curses.COLOR_RED, -1)
+    Attrs.error = curses.color_pair(4)
+
+    Attrs.status = Attrs.normal | curses.A_REVERSE
+    Attrs.cmd = Attrs.normal | curses.A_REVERSE
+
+
+#-------------------------------------------------------------------------------
 
 class Screen:
     """
@@ -61,7 +138,7 @@ def render_output(win, scr):
         attr = Attrs.error
     elif scr.output:
         text = scr.output
-        attrs = Attrs.normal
+        attr = Attrs.normal
     else:
         return
 
@@ -157,83 +234,9 @@ def render_view(win, vw, mdl):
             raise NotImplementedError("type: {!r}".format(type))
 
 
-@contextmanager
-def curses_screen():
-    """
-    Curses context manager.
-
-    Returns the screen window on entry.  Restores the terminal view on exit.
-    """
-    # Disable the curses ESC translation delay.
-    # FIXME: It might be possible to set the ESCDELAY variable in libncurses.so
-    # directly with ctypes.
-    os.environ["ESCDELAY"] = "0"
-
-    win = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    curses.curs_set(False)
-    curses.raw()
-
-    win.keypad(True)
-    win.notimeout(True)
-    win.nodelay(True)
-
-    # Enable mouse events.
-    mouse_mask = curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED
-    new_mask, _ = curses.mousemask(mouse_mask)
-    if new_mask != mouse_mask:
-        logging.warning(
-            "problem with mouse support: {:x} {:x}"
-            .format(mouse_mask, new_mask))
-
-    init_attrs()
-
-    try:
-        yield win
-    finally:
-        win.nodelay(False)
-        win.notimeout(False)
-        win.keypad(False)
-
-        curses.noraw()
-        curses.curs_set(True)
-        curses.nocbreak()
-        curses.echo()
-        curses.endwin()
-
-
-class Attrs:
-
-    pass
-
-
-
-def init_attrs():
-    curses.start_color()
-    curses.use_default_colors()
-
-    Attrs.normal = curses.color_pair(0)
-
-    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-    Attrs.cur_pos = curses.color_pair(1)
-
-    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    Attrs.cur_col = curses.color_pair(2)
-
-    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    Attrs.cur_row = curses.color_pair(3)
-
-    curses.init_pair(4, curses.COLOR_RED, -1)
-    Attrs.error = curses.color_pair(4)
-
-    Attrs.status = Attrs.normal | curses.A_REVERSE
-    Attrs.cmd = Attrs.normal | curses.A_REVERSE
-
-
 #-------------------------------------------------------------------------------
 
-class EscapeInterrupt(Exception):
+class InputAbort(Exception):
 
     pass
 
@@ -245,12 +248,12 @@ def cmd_input(scr, win, prompt=""):
 
     @return
       The input text.
-    @raise EscapeInterrupt
+    @raise InputAbort
       User cancelled the edit with C-c or C-g.
     """
     def translate(c):
         if c in {3, 7}:  # C-g
-            raise EscapeInterrupt()
+            raise InputAbort()
         else:
             return {
                 127: curses.KEY_BACKSPACE,
@@ -350,8 +353,7 @@ def main_loop(ctl, scr):
         sy, sx = win.getmaxyx()
         set_size(scr, sx, sy)
 
-        def input(prompt):
-            return cmd_input(scr, win, prompt=prompt)
+        input = partial(cmd_input, scr, win)
 
         while True:
             # Construct the status bar contents.
@@ -367,10 +369,17 @@ def main_loop(ctl, scr):
 
             if cmd_name == "command":
                 # Special case: prompt for the command first.
-                cmd_name = input("command: ")
+                try:
+                    cmd_name = input("command: ")
+                except InputAbort:
+                    # User aborted.
+                    continue
 
             try:
                 result = run(cmd_name, cmd_args, input)
+            except InputAbort:
+                # User aborted.
+                continue
             except CmdError as exc:
                 scr.error = "error: {}".format(exc)
                 curses.beep()
