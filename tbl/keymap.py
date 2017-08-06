@@ -18,8 +18,8 @@ from   . import screen as scr
 
 PREFIX = object()
 
-def check_key_map(key_map):
-    # Convert single character keys to tuples, for convenience.
+def build_key_map(key_map):
+    # Convert single character keys to tuples, as a convenience.
     key_map = {
         (k, ) if isinstance(k, str) else tuple( str(s) for s in k ): v
         for k, v in key_map.items()
@@ -41,22 +41,22 @@ def get_default():
     """
     Returns the default key map.
     """
-    return check_key_map({
-        "LEFT"          : partial(view.cmd_move_cur, dc=-1),
-        "RIGHT"         : partial(view.cmd_move_cur, dc=+1),
-        "UP"            : partial(view.cmd_move_cur, dr=-1),
-        "DOWN"          : partial(view.cmd_move_cur, dr=+1),
-        "LEFTCLICK"     : view.cmd_move_cur_to,
-        "S-LEFT"        : partial(view.cmd_scroll, dx=-1),
-        "S-RIGHT"       : partial(view.cmd_scroll, dx=+1),
-        "M-#"           : view.cmd_toggle_show_row_num,
-        "C-k"           : controller.cmd_delete_row,
+    return build_key_map({
+        "LEFT"          : "move-left",
+        "RIGHT"         : "move-right",
+        "UP"            : "move-up",
+        "DOWN"          : "move-down",
+        "S-LEFT"        : "scroll-left",
+        "S-RIGHT"       : "scroll-right",
+        "M-#"           : "toggle-show-row-num",
+        "C-k"           : "delete-row",
+
         "C-x"           : PREFIX,
-        ("C-x", "C-s")  : io.cmd_save,
-        ("C-x", "C-w")  : io.cmd_save_as,
-        "C-z"           : controller.cmd_undo,
-        "q"             : commands.cmd_quit,
-        "RESIZE"        : lambda screen, arg: scr.set_size(screen, arg[0], arg[1]),
+        ("C-x", "C-s")  : "save",
+        ("C-x", "C-w")  : "save-as",
+
+        "C-z"           : "undo",
+        "q"             : "quit",
     })
 
 

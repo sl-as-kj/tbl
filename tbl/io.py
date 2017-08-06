@@ -1,11 +1,24 @@
 import csv
 import logging
 
-from   .commands import param
+from   .commands import *
+from   .model import Model
 
 #-------------------------------------------------------------------------------
 
-def save(mdl, filename):
+def load_test(path):
+    with open(path) as file:
+        reader = csv.reader(file)
+        rows = iter(reader)
+        names = next(rows)
+        arrs = zip(*list(rows))
+    mdl = Model(path)
+    for arr, name in zip(arrs, names):
+        mdl.add_col(arr, name)
+    return mdl
+
+
+def _save(mdl, filename):
     """
     Save the model to a file.
     TODO: This needs a lot of work to preserve
@@ -26,14 +39,20 @@ def save(mdl, filename):
             writer.writerow(row)
 
 
-def cmd_save(mdl):
-    save(mdl, mdl.filename)
+@command()
+def save(mdl):
+    # FIXME: Confirm overwrite.
+    _save(mdl, mdl.filename)
+    return CmdResult(msg="saved: {}".format(mdl.filename))
 
 
-@param("filename", "save file as")
-def cmd_save_as(mdl, filename):
-    if len(filename) > 0:
-        save(mdl, filename)
-        mdl.filename = filename
+@command()
+def save_as(mdl, filename):
+    if len(filename) == 0:
+        raise CmdError("empty filename")
+    # FIXME: Confirm overwrite.
+    _save(mdl, filename)
+    mdl.filename = filename
+    return CmdResult(msg="saved: {}".format(filename))
 
 

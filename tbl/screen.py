@@ -3,14 +3,13 @@ import curses
 import curses.textpad
 import functools
 from   functools import partial
-import inspect
 import logging
 import numpy as np
 import os
 import sys
 
-from   . import commands, controller, keymap, model
-from   . import view
+from   . import controller, io, keymap, model, view
+from   .commands import *
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .text import pad, palide
@@ -224,19 +223,6 @@ def init_attrs():
 
 #-------------------------------------------------------------------------------
 
-def load_test(path):
-    import csv
-    with open(path) as file:
-        reader = csv.reader(file)
-        rows = iter(reader)
-        names = next(rows)
-        arrs = zip(*list(rows))
-    mdl = model.Model(path)
-    for arr, name in zip(arrs, names):
-        mdl.add_col(arr, name)
-    return mdl
-
-
 class EscapeInterrupt(Exception):
 
     pass
@@ -283,54 +269,7 @@ def cmd_input(scr, win, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def bind_args(cmd, args, input):
-    # Got a key binding.  Bind arguments by name.
-    sig = inspect.signature(cmd)
-    args = { 
-        k: v 
-        for k, v in args.items() 
-        if k in sig.parameters 
-    }
-
-    # For each parameter, prompt for input.
-    for name, prompt in commands.get_params(cmd):
-        args[name] = input(prompt)
-
-    return args
-
-
-def do_cmd(ctl, scr, win, arg, cmd):
-    # Bind arguments by name.
-    try:
-        args = bind_args(
-            cmd, 
-            {
-                "arg"   : arg,
-                "ctl"   : ctl,
-                "mdl"   : ctl.mdl, 
-                "scr"   : scr, 
-                "vw"    : scr.vw, 
-            },
-            lambda p: cmd_input(scr, win, prompt=p + ": ")
-        )
-    except EscapeInterrupt:
-        return None
-
-    try:
-        result = cmd(**args)
-    except commands.CmdError as exc:
-        # FIXME: Show error.
-        logging.info("command error: {}".format(exc))
-    else:
-        if result is None:
-            result = commands.CmdResult()
-        logging.info("result -> {}".format(result))
-        if result.msg is not None:
-            # FIXME: Show message.
-            log.info("command message: {}".format(result.msg))
-
-
-def next_event(ctl, scr, win, key_map):
+def next_cmd(scr, win, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -340,9 +279,6 @@ def next_event(ctl, scr, win, key_map):
     @raise KeyboardInterrupt
       The program should terminate.
     """
-    mdl = ctl.mdl
-    vw = scr.vw
-
     # Accumulate prefix keys.
     prefix = ()
 
@@ -357,25 +293,35 @@ def next_event(ctl, scr, win, key_map):
         logging.debug("key: {!r} {!r}".format(key, arg))
         scr.output = None
 
+        # Handle special UI events.
+        if key == "RESIZE":
+            screen.set_size(scr, arg[0], arg[1])
+            continue
+        elif key == "LEFTCLICK": 
+            view.move_cur_to_coord(scr.vw, arg[0], arg[1])
+            continue
+
         combo = prefix + (key, )
         try:
-            cmd = key_map[combo]
+            cmd_name = key_map[combo]
 
         except KeyError:
             # Unknown combo.
             # FIXME: Indicate this in the UI: flash?
             logging.debug("unknown combo: {}".format(" ".join(combo)))
-            break
+            # Start over.
+            prefix = ()
+            continue
 
         else:
-            if cmd is keymap.PREFIX:
+            if cmd_name is keymap.PREFIX:
                 # It's a prefix.
                 prefix = combo
                 continue
             else:
-                logging.debug("known combo: {} -> {}".format(" ".join(combo), cmd))
-                do_cmd(ctl, scr, win, arg, cmd)
-                break
+                logging.debug(
+                    "known combo: {} -> {}".format(" ".join(combo), cmd_name))
+                return cmd_name
 
 
 def main_loop(ctl, scr):
@@ -383,9 +329,19 @@ def main_loop(ctl, scr):
     vw = scr.vw
     key_map = keymap.get_default()
 
+    cmd_args = {
+        "ctl"   : ctl,
+        "mdl"   : ctl.mdl, 
+        "scr"   : scr, 
+        "vw"    : scr.vw, 
+    }
+
     with log.replay(), curses_screen() as win:
         sy, sx = win.getmaxyx()
         set_size(scr, sx, sy)
+
+        def input(prompt):
+            return cmd_input(scr, win, prompt=prompt)
 
         while True:
             # Construct the status bar contents.
@@ -395,21 +351,33 @@ def main_loop(ctl, scr):
             render_screen(win, scr, mdl)
             # Process the next UI event.
             try:
-                next_event(ctl, scr, win, key_map)
+                cmd_name = next_cmd(scr, win, key_map)
             except KeyboardInterrupt:
                 break
 
+            try:
+                result = run(cmd_name, cmd_args, input)
+            except CmdError as exc:
+                scr.output = "error: {}".format(exc)
+            else:
+                logging.info("result -> {}".format(result))
+                if result.msg is not None:
+                    logging.info("command message: {}".format(result.msg))
+                    scr.output = result.msg
 
-def main(filename=None):
+
+def main():
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
-    mdl = load_test(filename or sys.argv[1])
+    mdl = io.load_test(sys.argv[1])
     vw = view.View(mdl)
     scr = Screen(vw)
     ctl = controller.Controller(mdl)
+
     main_loop(ctl, scr)
 
 
 if __name__ == "__main__":
     main()
+
 

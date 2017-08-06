@@ -2,6 +2,7 @@ import logging
 import math
 import numpy as np
 
+from   .commands import *
 from   .lib import *
 
 #-------------------------------------------------------------------------------
@@ -197,13 +198,6 @@ def scroll_to(vw, x=None, y=None):
     vw.scr.y = clip(0, if_none(y, vw.scr.y), vw.size.y - 1)
 
 
-def cmd_scroll(vw, dx=0, dy=0):
-    """
-    Scrolls the view by offsets.
-    """
-    scroll_to(vw.scr.x + dx, vw.scr.y + dy)
-
-
 def scroll_to_pos(vw, pos):
     """
     Scrolls the view such that `pos` is visible.
@@ -230,18 +224,6 @@ def move_cur_to(vw, c=None, r=None):
     scroll_to_pos(vw, vw.cur)
     
 
-def cmd_move_cur(vw, dc=0, dr=0):
-    """
-    Moves the cursor position.
-
-    @param dc:
-      Change in col position.
-    @param dr:
-      Change in row position.
-    """
-    move_cur_to(vw, vw.cur.c + dc, vw.cur.r + dr)
-
-
 def move_cur_to_coord(vw, x, y):
     """
     Moves the cursor to the position matching coordinates `x, y`.
@@ -256,12 +238,41 @@ def move_cur_to_coord(vw, x, y):
         move_cur_to(vw, c, r)
 
     
-def cmd_move_cur_to(vw, arg):
-    x, y = arg
-    move_cur_to_coord(vw, x, y)
+#-------------------------------------------------------------------------------
+# Commands
+
+@command()
+def move_left(vw):
+    move_cur_to(vw, c=vw.cur.c - 1)
 
 
-def cmd_toggle_show_row_num(vw):
+@command()
+def move_right(vw):
+    move_cur_to(vw, c=vw.cur.c + 1)
+
+
+@command()
+def move_up(vw):
+    move_cur_to(vw, r=vw.cur.r - 1)
+
+
+@command()
+def move_down(vw):
+    move_cur_to(vw, r=vw.cur.r + 1)
+
+
+@command()
+def scroll_left(vw):
+    scroll_to(vw, vw.scr.x - 1)
+
+
+@command()
+def scroll_right(vw):
+    scroll_to(vw, vw.scr.x + 1)
+
+
+@command()
+def toggle_show_row_num(vw):
     vw.show_row_num = not vw.show_row_num
 
 

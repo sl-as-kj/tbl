@@ -1,7 +1,7 @@
 import numpy as np
 
 from   . import model
-from   .commands import CmdError, CmdResult
+from   .commands import *
 
 #-------------------------------------------------------------------------------
 
@@ -14,7 +14,8 @@ class Controller:
 
 #-------------------------------------------------------------------------------
 
-def cmd_undo(ctl):
+@command()
+def undo(ctl):
     try:
         cmd = ctl.undo.pop()
     except IndexError:
@@ -23,7 +24,8 @@ def cmd_undo(ctl):
         cmd()
 
 
-def cmd_delete_row(ctl, vw):
+@command()
+def delete_row(ctl, vw):
     row_num = vw.cur.r
     row     = model.delete_row(ctl.mdl, row_num)
     undo    = lambda: model.insert_row(ctl.mdl, row_num, row)

@@ -2,8 +2,6 @@ import itertools
 import numpy as np
 import logging
 
-from   .commands import param
-
 #-------------------------------------------------------------------------------
 
 class Model:

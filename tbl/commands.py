@@ -39,11 +39,14 @@ To bind a command to a key or key combo, see the `keymap` module.
 #-------------------------------------------------------------------------------
 
 from   collections import namedtuple
+import inspect
 import logging
 
 __all__ = (
     "CmdError",
     "CmdResult",
+    "command",
+    "run",
 )
 
 #-------------------------------------------------------------------------------
@@ -62,22 +65,39 @@ class InputInterrupt(Exception):
 
 #-------------------------------------------------------------------------------
 
-Param = namedtuple("Param", ("name", "prompt"))
+class Command:
 
-def param(name, prompt):
-    def wrapper(fn):
-        try:
-            params = fn.__params__
-        except AttributeError:
-            params = fn.__params__ = []
-        params.append(Param(name, prompt))
-        return fn
-
-    return wrapper
+    def __init__(self, name, fn, params):
+        self.name   = name
+        self.fn     = fn
+        self.params = params
 
 
-def get_params(fn):
-    return getattr(fn, "__params__", [])
+    def __call__(self, args):
+        result = self.fn(**args)
+        if result is None:
+            result = CmdResult()
+        return result
+
+
+
+commands = {}
+
+def command(name=None):
+    assert not callable(name), "you probably meant @command()"
+
+    def register(fn):
+        params = tuple(inspect.signature(fn).parameters)
+
+        nonlocal name
+        if name is None:
+            name = fn.__name__.replace("_", "-")
+        if name in commands:
+            raise ValueError("command name {} already used".format(name))
+
+        commands[name] = Command(name, fn, params)
+
+    return register
 
 
 #-------------------------------------------------------------------------------
@@ -89,9 +109,27 @@ class CmdResult:
 
 
 
+def run(cmd_name, args, input):
+    try:
+        cmd = commands[cmd_name]
+    except KeyError:
+        raise CmdError("unknown command: {}".format(cmd_name))
+
+    # Trim down arguments to those that are parameters of the command.
+    args = { n: v for n, v in args.items() if n in cmd.params }
+    # Prompt for any additional parameters.
+    for param in cmd.params:
+        if param not in args:
+            prompt = "{} {}: ".format(cmd.name, param)
+            args[param] = input(prompt)
+
+    return cmd(args)
+
+
 #-------------------------------------------------------------------------------
 
-def cmd_quit():
-    raise KeyboardInterrupt()
+@command()
+def quit():
+    raise SystemExit(0)
 
 
