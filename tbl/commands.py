@@ -100,6 +100,16 @@ class CmdResult:
 
 
 def run(cmd_name, args, input):
+    """
+    Runs a command.
+
+    @param args
+      Mapping of arguments available for binding to command parameters.  Not
+      all arguments must be used.
+    @param input
+      Function to obtaining arguments for other parameters.  Takes a prompt
+      string and returns an argument string.
+    """
     try:
         cmd = commands[cmd_name]
     except KeyError:
@@ -120,6 +130,7 @@ def run(cmd_name, args, input):
 
 @command()
 def quit():
+    # FIXME: Confirm if dirty.
     raise SystemExit(0)
 
 
