@@ -1,8 +1,18 @@
 from   collections import namedtuple
-import inspect
 import logging
 
+__all__ = (
+    "CmdError",
+    "CmdResult",
+)
+
 #-------------------------------------------------------------------------------
+
+class CmdError(Exception):
+
+    pass
+
+
 
 class InputInterrupt(Exception):
 
@@ -32,20 +42,12 @@ def get_params(fn):
 
 #-------------------------------------------------------------------------------
 
-def bind_args(fn, args, input):
-    # Got a key binding.  Bind arguments by name.
-    sig = inspect.signature(fn)
-    args = { 
-        k: v 
-        for k, v in args.items() 
-        if k in sig.parameters 
-    }
+class CmdResult:
 
-    # For each parameter, prompt for input.
-    for name, prompt in get_params(fn):
-        args[name] = input(prompt)
+    def __init__(self, *, msg=None, undo=None):
+        self.msg = msg
+        self.undo = undo
 
-    return args
 
 
 #-------------------------------------------------------------------------------

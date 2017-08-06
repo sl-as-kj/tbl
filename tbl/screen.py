@@ -3,12 +3,13 @@ import curses
 import curses.textpad
 import functools
 from   functools import partial
+import inspect
 import logging
 import numpy as np
 import os
 import sys
 
-from   . import commands, keymap, model
+from   . import commands, controller, keymap, model
 from   . import view
 from   .curses_keyboard import get_key
 from   .lib import log
@@ -282,15 +283,68 @@ def cmd_input(scr, win, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_event(mdl, vw, scr, win, key_map):
+def bind_args(cmd, args, input):
+    # Got a key binding.  Bind arguments by name.
+    sig = inspect.signature(cmd)
+    args = { 
+        k: v 
+        for k, v in args.items() 
+        if k in sig.parameters 
+    }
+
+    # For each parameter, prompt for input.
+    for name, prompt in commands.get_params(cmd):
+        args[name] = input(prompt)
+
+    return args
+
+
+def do_cmd(ctl, scr, win, arg, cmd):
+    # Bind arguments by name.
+    try:
+        args = bind_args(
+            cmd, 
+            {
+                "arg"   : arg,
+                "ctl"   : ctl,
+                "mdl"   : ctl.mdl, 
+                "scr"   : scr, 
+                "vw"    : scr.vw, 
+            },
+            lambda p: cmd_input(scr, win, prompt=p + ": ")
+        )
+    except EscapeInterrupt:
+        return None
+
+    try:
+        result = cmd(**args)
+    except commands.CmdError as exc:
+        # FIXME: Show error.
+        logging.info("command error: {}".format(exc))
+    else:
+        if result is None:
+            result = commands.CmdResult()
+        logging.info("result -> {}".format(result))
+        if result.undo is not None:
+            ctl.undo.append(result.undo)
+        if result.msg is not None:
+            # FIXME: Show message.
+            log.info("command message: {}".format(result.msg))
+
+
+def next_event(ctl, scr, win, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
-    Handles multi-character key combos.
+    Handles multi-character key combos; collects prefix keys until either
+    a complete combo is processed or an input error occurs.
 
     @raise KeyboardInterrupt
       The program should terminate.
     """
+    mdl = ctl.mdl
+    vw = scr.vw
+
     # Accumulate prefix keys.
     prefix = ()
 
@@ -305,38 +359,28 @@ def next_event(mdl, vw, scr, win, key_map):
 
         combo = prefix + (key, )
         try:
-            fn = key_map[combo]
+            cmd = key_map[combo]
 
         except KeyError:
             # Unknown combo.
             # FIXME: Indicate this in the UI: flash?
             logging.debug("unknown combo: {}".format(" ".join(combo)))
-            return None
+            break
 
         else:
-            if fn is None:
+            if cmd is None:
                 # It's a prefix.
                 prefix = combo
+                continue
             else:
-                # Got a key binding.  Bind arguments by name.
-                logging.debug("known combo: {}".format(" ".join(combo)))
-                try:
-                    args = commands.bind_args(
-                        fn, 
-                        {
-                            "mdl"   : mdl, 
-                            "vw"    : vw, 
-                            "scr"   : scr, 
-                            "arg"   : arg,
-                        },
-                        lambda p: cmd_input(scr, win, prompt=p + ": ")
-                    )
-                except EscapeInterrupt:
-                    return None
-                return fn(**args)
+                logging.debug("known combo: {} -> {}".format(" ".join(combo), cmd))
+                do_cmd(ctl, scr, win, arg, cmd)
+                break
 
 
-def main_loop(mdl, vw, scr):
+def main_loop(ctl, scr):
+    mdl = ctl.mdl
+    vw = scr.vw
     key_map = keymap.get_default()
 
     with log.replay(), curses_screen() as win:
@@ -351,7 +395,7 @@ def main_loop(mdl, vw, scr):
             render_screen(win, scr, mdl)
             # Process the next UI event.
             try:
-                next_event(mdl, vw, scr, win, key_map)
+                next_event(ctl, scr, win, key_map)
             except KeyboardInterrupt:
                 break
 
@@ -362,7 +406,8 @@ def main(filename=None):
     mdl = load_test(filename or sys.argv[1])
     vw = view.View(mdl)
     scr = Screen(vw)
-    main_loop(mdl, vw, scr)
+    ctl = controller.Controller(mdl)
+    main_loop(ctl, scr)
 
 
 if __name__ == "__main__":

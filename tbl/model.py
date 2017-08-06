@@ -23,9 +23,10 @@ class Model:
 
     def __init__(self, filename):
         # Columns, in order.
-        self.__cols         = []
+        self.cols         = []
         # Number of rows in the table, or None if no columns so far.
-        self.__num_rows     = None
+        # FIXME: Make a property?
+        self.num_rows     = None
 
         self.__undo_info = []
         self.filename = filename
@@ -41,17 +42,17 @@ class Model:
         arr = np.asarray(arr)
         if position is None:
             # Insert at end.
-            position = len(self.__cols)
+            position = len(self.cols)
 
         # Set or check the number of rows from the array length.
-        if self.__num_rows is None:
-            self.__num_rows = len(arr)
-        if len(arr) != self.__num_rows:
+        if self.num_rows is None:
+            self.num_rows = len(arr)
+        if len(arr) != self.num_rows:
             raise ValueError("col is wrong length")
 
         # Add the col.
         col = self.Col(arr, name=name)
-        self.__cols.insert(position, col)
+        self.cols.insert(position, col)
 
     def delete_row(self, row_num, set_undo=False):
         """
@@ -61,14 +62,14 @@ class Model:
         """
 
         # do not allow deletion of the last row for now.
-        if self.__num_rows <= 1:
+        if self.num_rows <= 1:
             return
 
-        row = [c.arr[row_num] for c in self.__cols]
-        for c in self.__cols:
+        row = [c.arr[row_num] for c in self.cols]
+        for c in self.cols:
             c.arr = np.delete(c.arr, row_num)
 
-        self.__num_rows -= 1
+        self.num_rows -= 1
 
         if set_undo:
             self.__undo_info.append((self.insert_row, {'row_num': row_num, 'row': row}))
@@ -83,9 +84,9 @@ class Model:
         if len(row) != self.num_cols:
             raise ValueError("row is wrong length")
 
-        for c_idx,c in enumerate(self.__cols):
+        for c_idx,c in enumerate(self.cols):
             c.arr = np.insert(c.arr, row_num, row[c_idx])
-        self.__num_rows += 1
+        self.num_rows += 1
         if set_undo:
             self.__undo_info.append((self.delete_row, {'row_num': row_num}))
 
@@ -109,7 +110,7 @@ class Model:
         Retrieves a column by ID.
         """
         # FIXME: At some point, we'll want a hash for this.
-        for col in self.__cols:
+        for col in self.cols:
             if col.id == col_id:
                 return col
         else:
@@ -118,24 +119,34 @@ class Model:
 
     @property
     def num_cols(self):
-        return len(self.__cols)
+        return len(self.cols)
 
 
-    @property
-    def num_rows(self):
-        if self.__num_rows is None:
-            raise RuntimeError("no cols yet")
-        else:
-            return self.__num_rows
+
+#-------------------------------------------------------------------------------
+
+def delete_row(mdl, row_num):
+    assert 0 <= row_num < mdl.num_rows
+
+    row = tuple( c.arr[row_num] for c in mdl.cols )
+    for col in mdl.cols:
+        col.arr = np.delete(col.arr, row_num)
+    mdl.num_rows -= 1
+
+    return row
 
 
-    @property
-    def cols(self):
-        """
-        Columns in the model, in order.
-        """
-        return iter(self.__cols)
+def insert_row(mdl, row_num, row):
+    assert len(row) == len(mdl.cols)
+    
+    for col, val in zip(mdl.cols, row):
+        col.arr = np.insert(col.arr, row_num, val)
+    mdl.num_rows += 1
 
+    return lambda: delete_row(mdl, row_num)
+
+
+#-------------------------------------------------------------------------------
 
 def save_model(mdl, filename):
     """
@@ -157,8 +168,6 @@ def save_model(mdl, filename):
             row = [str(c.arr[row_num]) for c in mdl.cols]
             writer.writerow(row)
 
-
-#-------------------------------------------------------------------------------
 
 def cmd_save(mdl):
     save_model(mdl, mdl.filename)

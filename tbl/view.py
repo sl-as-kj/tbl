@@ -197,7 +197,7 @@ def scroll_to(vw, x=None, y=None):
     vw.scr.y = clip(0, if_none(y, vw.scr.y), vw.size.y - 1)
 
 
-def scroll(vw, dx=0, dy=0):
+def cmd_scroll(vw, dx=0, dy=0):
     """
     Scrolls the view by offsets.
     """
@@ -230,7 +230,7 @@ def move_cur_to(vw, c=None, r=None):
     scroll_to_pos(vw, vw.cur)
     
 
-def move_cur(vw, dc=0, dr=0):
+def cmd_move_cur(vw, dc=0, dr=0):
     """
     Moves the cursor position.
 
@@ -256,7 +256,12 @@ def move_cur_to_coord(vw, x, y):
         move_cur_to(vw, c, r)
 
     
-def toggle_show_row_num(vw):
+def cmd_move_cur_to(vw, arg):
+    x, y = arg
+    move_cur_to_coord(vw, x, y)
+
+
+def cmd_toggle_show_row_num(vw):
     vw.show_row_num = not vw.show_row_num
 
 
