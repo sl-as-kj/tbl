@@ -74,6 +74,9 @@ class Model:
 #-------------------------------------------------------------------------------
 
 def delete_row(mdl, row_num):
+    """
+    Deletes a row; returns a sequence with the row's values.
+    """
     assert 0 <= row_num < mdl.num_rows
 
     row = tuple( c.arr[row_num] for c in mdl.cols )
@@ -85,6 +88,10 @@ def delete_row(mdl, row_num):
 
 
 def insert_row(mdl, row_num, row):
+    """
+    Inserts a sequence of values as a row at `row_num`.
+    """
+    assert 0 <= row_num <= mdl.num_rows
     assert len(row) == len(mdl.cols)
     
     for col, val in zip(mdl.cols, row):
