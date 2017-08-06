@@ -308,11 +308,11 @@ def next_cmd(scr, win, key_map):
 
         # Handle special UI events.
         if key == "RESIZE":
-            screen.set_size(scr, arg[0], arg[1])
-            continue
+            set_size(scr, arg[0], arg[1])
+            return None
         elif key == "LEFTCLICK": 
             view.move_cur_to_coord(scr.vw, arg[0], arg[1])
-            continue
+            return None
 
         combo = prefix + (key, )
         try:
@@ -372,6 +372,10 @@ def main_loop(ctl, scr):
                 cmd_name = next_cmd(scr, win, key_map)
             except KeyboardInterrupt:
                 break
+
+            if cmd_name is None:
+                # No command, but we still need to redraw.
+                continue
 
             if cmd_name == "command":
                 # Special case: prompt for the command first.
