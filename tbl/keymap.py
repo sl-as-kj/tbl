@@ -48,18 +48,20 @@ def get_default():
         "DOWN"          : "move-down",
         "S-LEFT"        : "scroll-left",
         "S-RIGHT"       : "scroll-right",
-        "M-#"           : "toggle-show-row-num",
+
         "C-b"           : "move-left",   # back
         "C-f"           : "move-right",  # forward
         "C-k"           : "delete-row",
         "C-p"           : "move-up",     # previous
         "C-n"           : "move-down",   # next
-
         "C-x"           : PREFIX,
         ("C-x", "C-s")  : "save",
         ("C-x", "C-w")  : "save-as",
-
         "C-z"           : "undo",
+
+        "M-#"           : "toggle-show-row-num",
+        "M-x"           : "command",
+
         "q"             : "quit",
     })
 

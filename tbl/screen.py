@@ -355,6 +355,10 @@ def main_loop(ctl, scr):
             except KeyboardInterrupt:
                 break
 
+            if cmd_name == "command":
+                # Special case: prompt for the command first.
+                cmd_name = input("command: ")
+
             try:
                 result = run(cmd_name, cmd_args, input)
             except CmdError as exc:

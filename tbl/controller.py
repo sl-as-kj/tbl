@@ -3,6 +3,8 @@ import numpy as np
 from   . import model
 from   .commands import *
 
+# FIXME: Track dirty state.
+
 #-------------------------------------------------------------------------------
 
 class Controller:
@@ -12,7 +14,9 @@ class Controller:
         self.undo = []
 
 
+
 #-------------------------------------------------------------------------------
+# Commands
 
 @command()
 def undo(ctl):

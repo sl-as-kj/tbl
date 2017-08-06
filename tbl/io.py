@@ -39,6 +39,9 @@ def _save(mdl, filename):
             writer.writerow(row)
 
 
+#-------------------------------------------------------------------------------
+# Commands
+
 @command()
 def save(mdl):
     # FIXME: Confirm overwrite.
