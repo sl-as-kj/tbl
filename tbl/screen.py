@@ -29,7 +29,7 @@ class Screen:
         self.status = "tbl " * 5
         self.status_size = 1
         self.cmd_size = 1
-        self.cmd_output = None
+        self.output = None
 
 
 
@@ -56,13 +56,13 @@ def render_screen(win, scr, mdl):
 
 
 def render_cmd(win, scr):
-    if not scr.cmd_output:
+    if not scr.output:
         return
 
     x = scr.size.x
     y = scr.size.y - scr.cmd_size
 
-    cmds = scr.cmd_output.splitlines()
+    cmds = scr.output.splitlines()
     assert len(cmds) <= scr.cmd_size
     for cmd in cmds:
         # FIXME: Writing the bottom-right corner causes an error, which is
@@ -348,12 +348,14 @@ def next_event(ctl, scr, win, key_map):
 
     # Loop until we have a complete combo.
     while True:
-        scr.cmd_output = " ".join(prefix)
-        render_cmd(win, scr)
+        # Show the combo prefix so far.
+        scr.output = " ".join(prefix) + " ..." if len(prefix) > 0 else None
 
+        # Wait for the next UI event.
+        render_cmd(win, scr)
         key, arg = get_key(win)
         logging.debug("key: {!r} {!r}".format(key, arg))
-        scr.cmd_output = None
+        scr.output = None
 
         combo = prefix + (key, )
         try:
@@ -366,7 +368,7 @@ def next_event(ctl, scr, win, key_map):
             break
 
         else:
-            if cmd is None:
+            if cmd is keymap.PREFIX:
                 # It's a prefix.
                 prefix = combo
                 continue

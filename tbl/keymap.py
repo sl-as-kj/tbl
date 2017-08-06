@@ -11,7 +11,7 @@ a key combo must be tagged as a prefix in this way.
 
 from   functools import partial
 
-from   . import commands, controller, model, view
+from   . import commands, controller, io, model, view
 from   . import screen as scr
 
 #-------------------------------------------------------------------------------
@@ -52,8 +52,8 @@ def get_default():
         "M-#"           : view.cmd_toggle_show_row_num,
         "C-k"           : controller.cmd_delete_row,
         "C-x"           : PREFIX,
-        ("C-x", "C-s")  : model.cmd_save,
-        ("C-x", "C-w")  : model.cmd_save_as,
+        ("C-x", "C-s")  : io.cmd_save,
+        ("C-x", "C-w")  : io.cmd_save_as,
         "C-z"           : controller.cmd_undo,
         "q"             : commands.cmd_quit,
         "RESIZE"        : lambda screen, arg: scr.set_size(screen, arg[0], arg[1]),

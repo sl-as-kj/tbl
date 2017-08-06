@@ -10,8 +10,18 @@ named parameters:
 - `scr` - the screen
 - `arg` - the argument to the UI event
 
-If any other parameters are unbound, the user will be prompted for (string)
-values for each, before invoking the command.
+A command may declare additional user-specified parameters using the `param`
+decorator.  When the command is executed, the user is prompted for values for
+these parameters.  Any other function arguments must be bound.
+
+For example, this command operates on the model, and an additional argument
+named "data":
+
+    ```
+    @param("name", "column name")
+    def rename(mdl, name):
+        ...
+    ``` 
 
 The command should perform the appropriate action, and may either,
 
