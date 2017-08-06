@@ -40,7 +40,6 @@ To bind a command to a key or key combo, see the `keymap` module.
 
 #-------------------------------------------------------------------------------
 
-from   collections import namedtuple
 import inspect
 import logging
 
