@@ -60,6 +60,7 @@ def get_default():
         "C-z"           : "undo",
 
         "M-#"           : "toggle-show-row-num",
+        "M-$"           : "hide-column",
         "M-x"           : "command",
 
         "q"             : "quit",
