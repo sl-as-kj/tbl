@@ -166,12 +166,12 @@ def locate_in_layout(layout, x0):
         return None
 
 
-def find_col_in_layout(layout, col_id):
+def find_col_in_layout(layout, col_idx):
     """
     Returns the layout entry for a column.
     """
     for x, w, type, val in layout:
-        if type == "col" and val == col_id:
+        if type == "col" and val == col_idx:
             return x, w, type, val
     else:
         return None
@@ -189,8 +189,11 @@ def get_status(vw, mdl):
     val     = col.arr[vw.cur.r]
     dtype   = col.arr.dtype
 
+    hidden = mdl.num_cols - len(vw.order)
+    hidden = " [{} cols hidden]".format(hidden) if hidden > 0 else ""
+
     return (
-        "{} [{}]".format(val, dtype),
+        "{} [{}]".format(val, dtype) + hidden,
         "{} {:6d}".format(col.name, row_num)
     )
 
@@ -211,9 +214,7 @@ def scroll_to_pos(vw, pos):
     Scrolls the view such that `pos` is visible.
     """
     # Find the col in the layout.
-    col_idx = vw.order[pos.c]
-    
-    x, w, _, _ = find_col_in_layout(lay_out_columns(vw), col_idx)
+    x, w, _, _ = find_col_in_layout(lay_out_columns(vw), pos.c)
 
     # Scroll right if necessary.
     vw.scr.x = max(x + w - vw.size.x, vw.scr.x)
@@ -246,6 +247,19 @@ def move_cur_to_coord(vw, x, y):
         move_cur_to(vw, c, r)
 
     
+def hide_col(vw, col_id):
+    try:
+        idx = vw.order.index(col_id)
+    except ValueError:
+        raise CmdError("column already hidden: {}".format(name))
+    del vw.order[idx]
+
+    # If we hide a column to the left of the current col, move to the left.
+    if vw.cur.c > idx:
+        move_cur_to(vw, vw.cur.c - 1)
+    # FIXME: What if we hide the last column?
+
+
 #-------------------------------------------------------------------------------
 # Commands
 
@@ -282,5 +296,23 @@ def scroll_right(vw):
 @command()
 def toggle_show_row_num(vw):
     vw.show_row_num = not vw.show_row_num
+
+
+@command()
+def hide_column_name(vw, mdl, name):
+    try:
+        col, = ( c for c in mdl.cols if c.name == name )
+    except ValueError:
+        raise CmdError("no column: {}".format(name))
+    hide_col(vw, col.id)
+    return CmdResult(msg="column hidden: {}".format(name))
+
+
+@command()
+def hide_column(vw, mdl):
+    col_id = vw.order[vw.cur.c]
+    hide_col(vw, col_id)
+    col = mdl.get_col(col_id)
+    return CmdResult(msg="column hidden: {}".format(col.name))
 
 
