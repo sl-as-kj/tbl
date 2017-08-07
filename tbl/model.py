@@ -50,16 +50,23 @@ class Model:
         self.cols.insert(position, col)
 
 
+    def get_col_idx(self, col_id):
+        """
+        Returns the column index of a column by ID.
+        """
+        # FIXME: At some point, we'll want a hash for this.
+        for i, col in enumerate(self.cols):
+            if col.id == col_id:
+                return i
+        else:
+            raise LookupError(col_id)
+        
+
     def get_col(self, col_id):
         """
         Retrieves a column by ID.
         """
-        # FIXME: At some point, we'll want a hash for this.
-        for col in self.cols:
-            if col.id == col_id:
-                return col
-        else:
-            raise LookupError(col_id)
+        return self.cols[self.get_col_idx(col_id)]
 
 
     @property
@@ -95,6 +102,13 @@ def insert_row(mdl, row_num, row):
         col.arr = np.insert(col.arr, row_num, val)
     mdl.num_rows += 1
 
-    return lambda: delete_row(mdl, row_num)
+
+def set_col_idx(mdl, col_id, col_idx):
+    """
+    Reorders columns so that `col_id` is at position `col_idx`.
+    """
+    old_idx = mdl.get_col_idx(col_id)
+    mdl.cols.insert(col_idx, mdl.cols.pop(old_idx))
+    return old_idx
 
 
