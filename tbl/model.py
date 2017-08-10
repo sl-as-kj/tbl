@@ -7,7 +7,7 @@ import logging
 class Model:
     # FIXME: Interim.
 
-    class Col(object):
+    class Col:
 
         # Counter for the next col ID.
         __ids = itertools.count()

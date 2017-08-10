@@ -56,14 +56,19 @@ def choose_fmt(arr):
 
 
 class View(object):
-    # FIXME: Interim.
+
+    class Col:
+
+        def __init__(self, fmt):
+            self.visible    = True
+            self.fmt        = fmt
+
+
 
     def __init__(self, mdl):
         # Displayed col order.  Also controls col visibility: not all cols
         # need be included.
-        self.order  = [ c.id for c in mdl.cols ]
-        # Mapping from col ID to col formatter.
-        self.fmt    = { c.id: choose_fmt(c.arr) for c in mdl.cols }
+        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
         # Number of rows.
         self.num_rows = mdl.num_rows
 
@@ -119,18 +124,18 @@ def lay_out_columns(vw):
         yield x, w, "text", vw.left_border
         x += w
 
-    for c, col_id in enumerate(vw.order):
-        if first:
-            first = False
-        elif vw.separator:
-            w = len(vw.separator)
-            yield x, w, "text", vw.separator
-            x += w
+    for c, col in enumerate(vw.cols):
+        if col.visible:
+            if first:
+                first = False
+            elif vw.separator:
+                w = len(vw.separator)
+                yield x, w, "text", vw.separator
+                x += w
 
-        fmt = vw.get_fmt(col_id)
-        w = fmt.width + 2 * vw.pad
-        yield x, w, "col", c
-        x += w
+            w = col.fmt.width + 2 * vw.pad
+            yield x, w, "col", c
+            x += w
 
     if vw.right_border:
         w = len(vw.right_border)
@@ -184,12 +189,12 @@ def get_status(vw, mdl):
     @return
       The left- and right-justified portions of the text.
     """
-    col     = mdl.get_col(vw.order[vw.cur.c])
+    col     = mdl.cols[vw.cur.c]
     row_num = vw.cur.r
     val     = col.arr[vw.cur.r]
     dtype   = col.arr.dtype
 
-    hidden = mdl.num_cols - len(vw.order)
+    hidden = sum( not c.visible for c in vw.cols )
     hidden = " [{} cols hidden]".format(hidden) if hidden > 0 else ""
 
     return (
@@ -228,7 +233,8 @@ def scroll_to_pos(vw, pos):
 
 
 def move_cur_to(vw, c=None, r=None):
-    vw.cur.c = clip(0, if_none(c, vw.cur.c), len(vw.order) - 1)
+    vw.cur.c = clip(0, if_none(c, vw.cur.c), len(vw.cols) - 1)
+    assert vw.cols[vw.cur.c].visible
     vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.num_rows - 1)
     scroll_to_pos(vw, vw.cur)
     
@@ -247,17 +253,28 @@ def move_cur_to_coord(vw, x, y):
         move_cur_to(vw, c, r)
 
     
-def hide_col(vw, col_id):
-    try:
-        idx = vw.order.index(col_id)
-    except ValueError:
+def _next_visible(cols, c):
+    return next( c for c in range(c + 1, len(cols)) if cols[c].visible )
+        
+
+def _prev_visible(cols, c):
+    return next( c for c in range(c - 1, -1, -1) if cols[c].visible )
+
+             
+def hide_col(vw, c):
+    logging.debug("hide_col {}".format(c))
+    if vw.cols[c].visible:
+        vw.cols[c].visible = False
+    else:
         raise CmdError("column already hidden: {}".format(name))
-    del vw.order[idx]
 
     # If we hide a column to the left of the current col, move to the left.
-    if vw.cur.c > idx:
-        move_cur_to(vw, vw.cur.c - 1)
-    # FIXME: What if we hide the last column?
+    if vw.cur.c == c:
+        try:
+            vw.cur.c = _next_visible(vw.cols, c)
+        except StopIteration:
+            vw.cur.c = _prev_visible(vw.cols, c)
+        # FIXME: What if we hide the last column?
 
 
 #-------------------------------------------------------------------------------
@@ -265,12 +282,22 @@ def hide_col(vw, col_id):
 
 @command()
 def move_left(vw):
-    move_cur_to(vw, c=vw.cur.c - 1)
+    try:
+        c = _prev_visible(vw.cols, vw.cur.c)
+    except StopIteration:
+        pass
+    else:
+        move_cur_to(vw, c=c)
 
 
 @command()
 def move_right(vw):
-    move_cur_to(vw, c=vw.cur.c + 1)
+    try:
+        c = _next_visible(vw.cols, vw.cur.c)
+    except StopIteration:
+        pass
+    else:
+        move_cur_to(vw, c=c)
 
 
 @command()
@@ -310,9 +337,9 @@ def hide_column_name(vw, mdl, name):
 
 @command()
 def hide_column(vw, mdl):
-    col_id = vw.order[vw.cur.c]
-    hide_col(vw, col_id)
-    col = mdl.get_col(col_id)
+    c = vw.cur.c
+    hide_col(vw, c)
+    col = mdl.get_col(c)
     return CmdResult(msg="column hidden: {}".format(col.name))
 
 
