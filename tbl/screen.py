@@ -200,21 +200,20 @@ def render_view(win, vw, mdl):
 
         elif type == "col":
             # A column from the model.
-            col = z
-            col_idx = vw.order[col]
-            fmt = vw.get_fmt(col_idx)
-            arr = mdl.get_col(col_idx).arr
+            c = z
+            fmt = vw.cols[c].fmt
+            arr = mdl.get_col(c).arr
 
             for y, row in enumerate(rows):
                 attr = (
-                         Attrs.cur_pos if col == c and row == r
-                    else Attrs.cur_col if col == c
-                    else Attrs.cur_row if              row == r
+                         Attrs.cur_pos if c == vw.cur.c and row == vw.cur.r
+                    else Attrs.cur_col if c == vw.cur.c
+                    else Attrs.cur_row if                   row == vw.cur.r
                     else Attrs.normal
                 )
                 if row == -1:
                     # Header.
-                    text = palide(mdl.get_col(col_idx).name, w, elide_pos=0.7)
+                    text = palide(mdl.get_col(c).name, w, elide_pos=0.7)
                     attr |= curses.A_UNDERLINE
                 else:
                     text = (pad + fmt(arr[row]) + pad)
@@ -223,7 +222,7 @@ def render_view(win, vw, mdl):
         elif type == "row_num":
             fmt_str = "0{}d".format(z)
             for y, row in enumerate(rows):
-                attr = Attrs.cur_row if row == r else Attrs.normal
+                attr = Attrs.cur_row if row == vw.cur.r else Attrs.normal
                 if row == -1:
                     # Header
                     pass
