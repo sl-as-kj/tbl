@@ -91,6 +91,7 @@ class View(object):
         return self.fmt[col_id]
 
 
+
 #-------------------------------------------------------------------------------
 # Layout
 
@@ -231,7 +232,7 @@ def move_cur_to(vw, c=None, r=None):
     vw.cur.c = clip(0, if_none(c, vw.cur.c), len(vw.order) - 1)
     vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.num_rows - 1)
     scroll_to_pos(vw, vw.cur)
-    
+
 
 def move_cur_to_coord(vw, x, y):
     """
@@ -246,7 +247,7 @@ def move_cur_to_coord(vw, x, y):
         r = vw.scr.y + y - 1
         move_cur_to(vw, c, r)
 
-    
+
 def hide_col(vw, col_id):
     try:
         idx = vw.order.index(col_id)
