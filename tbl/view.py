@@ -88,6 +88,8 @@ class View(object):
         self.right_border   = "\u2551"
         self.pad            = 1
 
+        self.layout         = None
+
 
     def get_fmt(self, col_id):
         """
@@ -96,10 +98,20 @@ class View(object):
         return self.fmt[col_id]
 
 
+
 #-------------------------------------------------------------------------------
 # Layout
 
-def lay_out_columns(vw):
+class Layout:
+
+    def __init__(self, mdl, vw):
+        cols = lay_out_cols(mdl, vw)
+        self.cols       = list(cols)
+        self.num_rows   = mdl.num_rows
+
+
+
+def lay_out_cols(mdl, vw):
     """
     Computes the column layout.
 
@@ -114,7 +126,7 @@ def lay_out_columns(vw):
     first = True
 
     if vw.show_row_num:
-        digits = int(math.log10(vw.num_rows)) + 1
+        digits = int(math.log10(mdl.num_rows)) + 1
         w = digits + 2 * vw.pad
         yield x, w, "row_num", digits
         x += w
@@ -143,7 +155,7 @@ def lay_out_columns(vw):
         x += w
 
 
-def shift_layout(layout, x0, x_size):
+def shift_layout_cols(layout, x0, x_size):
     """
     Shifts and filters the layout for scroll position and screen width.
 
@@ -219,7 +231,7 @@ def scroll_to_pos(vw, pos):
     Scrolls the view such that `pos` is visible.
     """
     # Find the col in the layout.
-    x, w, _, _ = find_col_in_layout(lay_out_columns(vw), pos.c)
+    x, w, _, _ = find_col_in_layout(vw.layout.cols, pos.c)
 
     # Scroll right if necessary.
     vw.scr.x = max(x + w - vw.size.x, vw.scr.x)
@@ -229,7 +241,9 @@ def scroll_to_pos(vw, pos):
     # Scroll up if necessary.
     vw.scr.y = min(vw.cur.r, vw.scr.y)
     # Scroll down if necessary.
-    vw.scr.y = max(vw.cur.r - vw.size.y, vw.scr.y)
+    sy = vw.size.y - (1 if vw.show_header else 0)
+    logging.info("vw.cur.r={} sy={} vw.scr.y={}".format(vw.cur.r, sy, vw.scr.y))
+    vw.scr.y = max(vw.cur.r - sy + 1, vw.scr.y)
 
 
 def move_cur_to(vw, c=None, r=None):
@@ -237,7 +251,7 @@ def move_cur_to(vw, c=None, r=None):
     assert vw.cols[vw.cur.c].visible
     vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.num_rows - 1)
     scroll_to_pos(vw, vw.cur)
-    
+
 
 def move_cur_to_coord(vw, x, y):
     """
@@ -246,7 +260,7 @@ def move_cur_to_coord(vw, x, y):
     Does nothing if the coordinates don't correspond to a position, _e.g._
     the position is on a column separator.
     """
-    _, _, type, c = locate_in_layout(lay_out_columns(vw), vw.scr.x + x)
+    _, _, type, c = locate_in_layout(vw.layout.cols, vw.scr.x + x)
     if type == "col":
         # FIXME: Compute row number correctly.
         r = vw.scr.y + y - 1
