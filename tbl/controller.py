@@ -2,6 +2,7 @@ import numpy as np
 
 from   . import model
 from   .commands import *
+from .view import move_cur_to
 
 # FIXME: Track dirty state.
 
@@ -34,5 +35,11 @@ def delete_row(ctl, vw):
     row     = model.delete_row(ctl.mdl, row_num)
     undo    = lambda: model.insert_row(ctl.mdl, row_num, row)
     ctl.undo.append(undo)
+
+    # move currently selected row one up if this was the last row.
+    # Alex, is this the right place for this?
+    if row_num >= ctl.mdl.num_rows:
+        move_cur_to(vw, r=ctl.mdl.num_rows - 1)
+
 
 
