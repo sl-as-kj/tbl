@@ -158,24 +158,24 @@ def render_view(win, vw, mdl):
     """
     Renders `mdl` with view `vw` in curses `win`.
     """
-    layout = view.lay_out_columns(vw)
-    layout = view.shift_layout(layout, vw.scr.x, vw.size.x)
+    # Rebuild the layout.
+    vw.layout = view.Layout(mdl, vw)
 
     # Row numbers to draw.  
-    num_rows = min(vw.size.y, mdl.num_rows - vw.scr.y) 
-    # For the time being, we show a contiguous range of rows starting at y.
-    rows = np.arange(num_rows) + vw.scr.y 
-
+    num_rows = mdl.num_rows - vw.scr.y
+    max_rows = vw.size.y - 1 if vw.show_header else vw.size.y
+    num_rows = min(max_rows, num_rows)
+    rows = np.arange(num_rows) + vw.scr.y
     if vw.show_header:
-        # Make room for the header.
-        rows[1 :] = rows[: -1]
-        rows[0] = -1
+        rows = np.concatenate([[-1], rows])
+    logging.info("rows={}".format(rows))
 
     # The padding at the left and right of each field value.
     pad = " " * vw.pad
 
     # Now, draw.
-    for x, w, type, z in layout:
+    col_layout = view.shift_layout_cols(vw.layout.cols, vw.scr.x, vw.size.x)
+    for x, w, type, z in col_layout:
         c, r = vw.cur
 
         # The item may be only partially visible.  Compute the start and stop
