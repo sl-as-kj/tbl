@@ -69,8 +69,6 @@ class View(object):
         # Displayed col order.  Also controls col visibility: not all cols
         # need be included.
         self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
-        # Number of rows.
-        self.num_rows = mdl.num_rows
 
         # Window size.
         self.size = Coordinates(80, 25)
@@ -249,7 +247,7 @@ def scroll_to_pos(vw, pos):
 def move_cur_to(vw, c=None, r=None):
     vw.cur.c = clip(0, if_none(c, vw.cur.c), len(vw.cols) - 1)
     assert vw.cols[vw.cur.c].visible
-    vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.num_rows - 1)
+    vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.layout.num_rows - 1)
     scroll_to_pos(vw, vw.cur)
 
 
