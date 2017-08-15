@@ -76,8 +76,6 @@ class View(object):
         self.error = None
         self.output = None
 
-        # Window size.
-        self.size = Coordinates(80, 25)
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
         # Cursor position.
@@ -102,12 +100,18 @@ class View(object):
         return self.fmt[col_id]
 
 
-    def set_size(self, sx, sy):
+    def set_screen_size(self, sx, sy):
         # FIXME: Do we still need both sizes?
         self.screen_size.x = sx
         self.screen_size.y = sy
-        self.size.x = sx
-        self.size.y = sy - self.status_size - self.cmd_size
+
+
+    @property
+    def size(self):
+        return Coordinates(
+            self.screen_size.x,
+            self.screen_size.y - self.status_size - self.cmd_size
+        )
 
 
 

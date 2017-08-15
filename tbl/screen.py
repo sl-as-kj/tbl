@@ -286,7 +286,7 @@ def next_cmd(vw, win, key_map):
 
         # Handle special UI events.
         if key == "RESIZE":
-            vw.set_size(arg[0], arg[1])
+            vw.set_screen_size(arg[0], arg[1])
             return None
         elif key == "LEFTCLICK": 
             view.move_cur_to_coord(vw, arg[0], arg[1])
@@ -326,7 +326,7 @@ def main_loop(mdl, vw, ctl):
 
     with log.replay(), curses_screen() as win:
         sy, sx = win.getmaxyx()
-        vw.set_size(sx, sy)
+        vw.set_screen_size(sx, sy)
 
         input = partial(read_input, win, vw)
 
