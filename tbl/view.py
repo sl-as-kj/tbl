@@ -1,6 +1,6 @@
 import math
 
-from   .commands import *
+from   .commands import command, CmdError, CmdResult
 from   .lib import *
 
 #-------------------------------------------------------------------------------
@@ -116,6 +116,8 @@ class View(object):
 #-------------------------------------------------------------------------------
 # Layout
 
+# FIXME: Roll behavior into class.
+
 class Layout:
 
     def __init__(self, mdl, vw):
@@ -208,6 +210,8 @@ def find_col_in_layout(layout, col_idx):
         return None
 
 
+#-------------------------------------------------------------------------------
+
 def get_status(vw, mdl):
     """
     Writes the status bar text.
@@ -292,7 +296,7 @@ def hide_col(vw, c):
     if vw.cols[c].visible:
         vw.cols[c].visible = False
     else:
-        raise CmdError("column already hidden: {}".format(name))
+        raise CmdError("column already hidden")
 
     # If we hide a column to the left of the current col, move to the left.
     if vw.cur.c == c:
