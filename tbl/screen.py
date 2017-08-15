@@ -315,14 +315,13 @@ def next_cmd(vw, win, key_map):
                 return cmd_name
 
 
-def main_loop(ctl, vw):
-    mdl = ctl.mdl
+def main_loop(mdl, vw, ctl):
     key_map = keymap.get_default()
 
     cmd_args = {
-        "ctl"   : ctl,
-        "mdl"   : ctl.mdl, 
+        "mdl"   : mdl, 
         "vw"    : vw, 
+        "ctl"   : ctl,
     }
 
     with log.replay(), curses_screen() as win:
@@ -380,9 +379,8 @@ def main():
 
     mdl = io.load_test(sys.argv[1])
     vw = view.View(mdl)
-    ctl = controller.Controller(mdl)
-
-    main_loop(ctl, vw)
+    ctl = controller.Controller()
+    main_loop(mdl, vw, ctl)
 
 
 if __name__ == "__main__":
