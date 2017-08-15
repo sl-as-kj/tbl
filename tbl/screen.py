@@ -145,7 +145,6 @@ def render_table(win, vw, mdl):
     rows = np.arange(num_rows) + vw.scr.y
     if vw.show_header:
         rows = np.concatenate([[-1], rows])
-    logging.info("rows={}".format(rows))
 
     # The padding at the left and right of each field value.
     pad = " " * vw.pad

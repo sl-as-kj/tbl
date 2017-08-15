@@ -256,7 +256,6 @@ def scroll_to_pos(vw, pos):
     vw.scr.y = min(vw.cur.r, vw.scr.y)
     # Scroll down if necessary.
     sy = vw.size.y - (1 if vw.show_header else 0)
-    logging.info("vw.cur.r={} sy={} vw.scr.y={}".format(vw.cur.r, sy, vw.scr.y))
     vw.scr.y = max(vw.cur.r - sy + 1, vw.scr.y)
 
 
@@ -290,7 +289,6 @@ def _prev_visible(cols, c):
 
              
 def hide_col(vw, c):
-    logging.debug("hide_col {}".format(c))
     if vw.cols[c].visible:
         vw.cols[c].visible = False
     else:
