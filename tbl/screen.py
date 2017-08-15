@@ -1,19 +1,22 @@
+"""
+Curses-based application.
+"""
+
+#-------------------------------------------------------------------------------
+
 from   contextlib import contextmanager
 import curses
 import curses.textpad
-import functools
 from   functools import partial
 import logging
 import numpy as np
 import os
 import sys
 
-from   . import controller, io, keymap, model, view
-from   .commands import *
+from   . import commands, controller, io, keymap, view
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .text import pad, palide
-import curses.textpad
 
 #-------------------------------------------------------------------------------
 # Curses setup
@@ -359,11 +362,11 @@ def main_loop(ctl, vw):
                     continue
 
             try:
-                result = run(cmd_name, cmd_args, input)
+                result = commands.run(cmd_name, cmd_args, input)
             except InputAbort:
                 # User aborted.
                 continue
-            except CmdError as exc:
+            except commands.CmdError as exc:
                 vw.error = "error: {}".format(exc)
                 curses.beep()
             else:
