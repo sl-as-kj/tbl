@@ -1,6 +1,4 @@
-import logging
 import math
-import numpy as np
 
 from   .commands import *
 from   .lib import *
