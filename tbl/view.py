@@ -99,13 +99,6 @@ class View(object):
         self.layout         = None
 
 
-    def get_fmt(self, col_id):
-        """
-        Returns the formatter for a column, by name.
-        """
-        return self.fmt[col_id]
-
-
     def set_screen_size(self, sx, sy):
         self.screen_size.x = sx
         self.screen_size.y = sy
