@@ -217,7 +217,7 @@ class InputAbort(Exception):
 
 
 
-def cmd_input(vw, win, prompt=""):
+def cmd_input(win, vw, prompt=""):
     """
     Prompts for and reads a line of input in the cmd line.
 
@@ -326,7 +326,7 @@ def main_loop(ctl, vw):
         sy, sx = win.getmaxyx()
         vw.set_size(sx, sy)
 
-        input = partial(cmd_input, vw, win)
+        input = partial(cmd_input, win, vw)
 
         while True:
             # Construct the status bar contents.
