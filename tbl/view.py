@@ -64,17 +64,23 @@ class View(object):
 
 
     def __init__(self, mdl):
-        # Displayed col order.  Also controls col visibility: not all cols
-        # need be included.
-        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
-
+        # Overall dimensions.
         self.screen_size = Coordinates(80, 25)
 
-        self.status = "?" * 16
+        # Height of status bar.
         self.status_size = 1
+        # Status bar text.
+        self.status = "?" * 16
+        # Height of cmd region.
         self.cmd_size = 1
+        # Output or error text in cmd region.
         self.error = None
         self.output = None
+
+        # Displayed col order.  Also controls col visibility: not all cols
+        # need be included.
+        # FIXME: Add columns from elsewhre.
+        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
 
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
@@ -101,7 +107,6 @@ class View(object):
 
 
     def set_screen_size(self, sx, sy):
-        # FIXME: Do we still need both sizes?
         self.screen_size.x = sx
         self.screen_size.y = sy
 
