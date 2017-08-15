@@ -1,19 +1,22 @@
+"""
+Curses-based application.
+"""
+
+#-------------------------------------------------------------------------------
+
 from   contextlib import contextmanager
 import curses
 import curses.textpad
-import functools
 from   functools import partial
 import logging
 import numpy as np
 import os
 import sys
 
-from   . import controller, io, keymap, model, view
-from   .commands import *
+from   . import commands, controller, io, keymap, view
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .text import pad, palide
-import curses.textpad
 
 #-------------------------------------------------------------------------------
 # Curses setup
@@ -94,59 +97,36 @@ def init_attrs():
 
 #-------------------------------------------------------------------------------
 
-class Screen:
-    """
-    The display screen, including the table view and UI components.
-    """
-
-    def __init__(self, vw):
-        self.size = view.Coordinates(80, 25)
-        self.vw = vw
-        self.status = "tbl " * 5
-        self.status_size = 1
-        self.cmd_size = 1
-        self.error = None
-        self.output = None
-
-
-
-def set_size(scr, sx, sy):
-    scr.size.x = sx
-    scr.size.y = sy
-    scr.vw.size.x = sx
-    scr.vw.size.y = sy - scr.status_size - scr.cmd_size
-
-
-def render_screen(win, scr, mdl):
-    x = scr.size.x
-    y = scr.size.y - scr.status_size - scr.cmd_size
+def render_screen(win, vw, mdl):
+    x = vw.screen_size.x
+    y = vw.screen_size.y - vw.status_size - vw.cmd_size
     
     # Draw the status bar.
-    status = scr.status.splitlines()
-    assert len(status) == scr.status_size
+    status = vw.status.splitlines()
+    assert len(status) == vw.status_size
     for line in status:
         win.addstr(y, 0, pad(line[: x], x), Attrs.status)
         y += 1
 
-    render_output(win, scr)
-    render_view(win, scr.vw, mdl)
+    render_output(win, vw)
+    render_table(win, vw, mdl)
 
 
-def render_output(win, scr):
-    if scr.error:
-        text = scr.error
+def render_output(win, vw):
+    if vw.error:
+        text = vw.error
         attr = Attrs.error
-    elif scr.output:
-        text = scr.output
+    elif vw.output:
+        text = vw.output
         attr = Attrs.normal
     else:
         return
 
-    x = scr.size.x
-    y = scr.size.y - scr.cmd_size
+    x = vw.screen_size.x
+    y = vw.screen_size.y - vw.cmd_size
 
     lines = text.splitlines()
-    assert len(lines) <= scr.cmd_size
+    assert len(lines) <= vw.cmd_size
     for line in lines:
         # FIXME: Writing the bottom-right corner causes an error, which is
         # why we use x - 1.
@@ -154,7 +134,7 @@ def render_output(win, scr):
         y += 1
 
 
-def render_view(win, vw, mdl):
+def render_table(win, vw, mdl):
     """
     Renders `mdl` with view `vw` in curses `win`.
     """
@@ -168,7 +148,6 @@ def render_view(win, vw, mdl):
     rows = np.arange(num_rows) + vw.scr.y
     if vw.show_header:
         rows = np.concatenate([[-1], rows])
-    logging.info("rows={}".format(rows))
 
     # The padding at the left and right of each field value.
     pad = " " * vw.pad
@@ -241,14 +220,14 @@ class InputAbort(Exception):
 
 
 
-def cmd_input(scr, win, prompt=""):
+def read_input(win, vw, prompt=""):
     """
-    Prompts for and reads a line of input in the cmd line.
+    Prompts for and reads a line of text input in the cmd line.
 
     @return
       The input text.
     @raise InputAbort
-      User cancelled the edit with C-c or C-g.
+      User cancelled the edit.
     """
     def translate(c):
         if c in {3, 7}:  # C-g
@@ -259,11 +238,11 @@ def cmd_input(scr, win, prompt=""):
             }.get(c, c)
 
     # Draw the prompt.
-    y = scr.size.y - scr.cmd_size
+    y = vw.screen_size.y - vw.cmd_size
     win.addstr(y, 0, prompt)
     win.refresh()
     # Create a text input in the rest of the cmd line.
-    win = curses.newwin(1, scr.size.x - len(prompt), y, len(prompt))
+    win = curses.newwin(1, vw.screen_size.x - len(prompt), y, len(prompt))
     box = curses.textpad.Textbox(win)
     curses.curs_set(True)
     # Run it.
@@ -281,7 +260,7 @@ def cmd_input(scr, win, prompt=""):
 
 #-------------------------------------------------------------------------------
 
-def next_cmd(scr, win, key_map):
+def next_cmd(vw, win, key_map):
     """
     Waits for, then processes the next UI event according to key_map.
 
@@ -297,20 +276,20 @@ def next_cmd(scr, win, key_map):
     # Loop until we have a complete combo.
     while True:
         # Show the combo prefix so far.
-        scr.output = " ".join(prefix) + " ..." if len(prefix) > 0 else None
+        vw.output = " ".join(prefix) + " ..." if len(prefix) > 0 else None
 
         # Wait for the next UI event.
-        render_output(win, scr)
+        render_output(win, vw)
         key, arg = get_key(win)
         logging.debug("key: {!r} {!r}".format(key, arg))
-        scr.output = scr.error = None
+        vw.output = vw.error = None
 
         # Handle special UI events.
         if key == "RESIZE":
-            set_size(scr, arg[0], arg[1])
+            vw.set_size(arg[0], arg[1])
             return None
         elif key == "LEFTCLICK": 
-            view.move_cur_to_coord(scr.vw, arg[0], arg[1])
+            view.move_cur_to_coord(vw, arg[0], arg[1])
             return None
 
         combo = prefix + (key, )
@@ -336,39 +315,37 @@ def next_cmd(scr, win, key_map):
                 return cmd_name
 
 
-def main_loop(ctl, scr):
+def main_loop(ctl, vw):
     mdl = ctl.mdl
-    vw = scr.vw
     key_map = keymap.get_default()
 
     cmd_args = {
         "ctl"   : ctl,
         "mdl"   : ctl.mdl, 
-        "scr"   : scr, 
-        "vw"    : scr.vw, 
+        "vw"    : vw, 
     }
 
     with log.replay(), curses_screen() as win:
         sy, sx = win.getmaxyx()
-        set_size(scr, sx, sy)
+        vw.set_size(sx, sy)
 
-        input = partial(cmd_input, scr, win)
+        input = partial(read_input, win, vw)
 
         while True:
             # Construct the status bar contents.
             sl, sr = view.get_status(vw, mdl)
             extra = vw.size.x - len(sl) - len(sr)
             if extra >= 0:
-                scr.status = sl + " " * extra + sr
+                vw.status = sl + " " * extra + sr
             else:
-                scr.status = sl[: extra] + sr
+                vw.status = sl[: extra] + sr
 
             # Render the screen.
             win.erase()
-            render_screen(win, scr, mdl)
+            render_screen(win, vw, mdl)
             # Process the next UI event.
             try:
-                cmd_name = next_cmd(scr, win, key_map)
+                cmd_name = next_cmd(vw, win, key_map)
             except KeyboardInterrupt:
                 break
 
@@ -385,18 +362,17 @@ def main_loop(ctl, scr):
                     continue
 
             try:
-                result = run(cmd_name, cmd_args, input)
+                result = commands.run(cmd_name, cmd_args, input)
             except InputAbort:
                 # User aborted.
                 continue
-            except CmdError as exc:
-                scr.error = "error: {}".format(exc)
+            except commands.CmdError as exc:
+                vw.error = "error: {}".format(exc)
                 curses.beep()
             else:
                 logging.info("command result: {}".format(result))
                 if result.msg is not None:
-                    logging.info("command message: {}".format(result.msg))
-                    scr.output = result.msg
+                    vw.output = result.msg
 
 
 def main():
@@ -404,10 +380,9 @@ def main():
 
     mdl = io.load_test(sys.argv[1])
     vw = view.View(mdl)
-    scr = Screen(vw)
     ctl = controller.Controller(mdl)
 
-    main_loop(ctl, scr)
+    main_loop(ctl, vw)
 
 
 if __name__ == "__main__":

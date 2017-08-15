@@ -1,6 +1,4 @@
-import logging
 import math
-import numpy as np
 
 from   .commands import *
 from   .lib import *
@@ -70,6 +68,14 @@ class View(object):
         # need be included.
         self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
 
+        self.screen_size = Coordinates(80, 25)
+
+        self.status = "?" * 16
+        self.status_size = 1
+        self.cmd_size = 1
+        self.error = None
+        self.output = None
+
         # Window size.
         self.size = Coordinates(80, 25)
         # Scroll position, as visible upper-left coordinate.
@@ -94,6 +100,14 @@ class View(object):
         Returns the formatter for a column, by name.
         """
         return self.fmt[col_id]
+
+
+    def set_size(self, sx, sy):
+        # FIXME: Do we still need both sizes?
+        self.screen_size.x = sx
+        self.screen_size.y = sy
+        self.size.x = sx
+        self.size.y = sy - self.status_size - self.cmd_size
 
 
 
@@ -240,7 +254,6 @@ def scroll_to_pos(vw, pos):
     vw.scr.y = min(vw.cur.r, vw.scr.y)
     # Scroll down if necessary.
     sy = vw.size.y - (1 if vw.show_header else 0)
-    logging.info("vw.cur.r={} sy={} vw.scr.y={}".format(vw.cur.r, sy, vw.scr.y))
     vw.scr.y = max(vw.cur.r - sy + 1, vw.scr.y)
 
 
@@ -274,7 +287,6 @@ def _prev_visible(cols, c):
 
              
 def hide_col(vw, c):
-    logging.debug("hide_col {}".format(c))
     if vw.cols[c].visible:
         vw.cols[c].visible = False
     else:
