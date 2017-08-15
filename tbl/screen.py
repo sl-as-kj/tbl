@@ -94,14 +94,6 @@ def init_attrs():
 
 #-------------------------------------------------------------------------------
 
-def set_size(vw, sx, sy):
-    # FIXME: Do we still need both sizes?
-    vw.screen_size.x = sx
-    vw.screen_size.y = sy
-    vw.size.x = sx
-    vw.size.y = sy - vw.status_size - vw.cmd_size
-
-
 def render_screen(win, vw, mdl):
     x = vw.screen_size.x
     y = vw.screen_size.y - vw.status_size - vw.cmd_size
@@ -292,7 +284,7 @@ def next_cmd(vw, win, key_map):
 
         # Handle special UI events.
         if key == "RESIZE":
-            set_size(vw, arg[0], arg[1])
+            vw.set_size(arg[0], arg[1])
             return None
         elif key == "LEFTCLICK": 
             view.move_cur_to_coord(vw, arg[0], arg[1])
@@ -333,7 +325,7 @@ def main_loop(ctl, vw):
 
     with log.replay(), curses_screen() as win:
         sy, sx = win.getmaxyx()
-        set_size(vw, sx, sy)
+        vw.set_size(sx, sy)
 
         input = partial(cmd_input, vw, win)
 

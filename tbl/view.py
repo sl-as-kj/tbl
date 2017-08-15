@@ -104,6 +104,14 @@ class View(object):
         return self.fmt[col_id]
 
 
+    def set_size(self, sx, sy):
+        # FIXME: Do we still need both sizes?
+        self.screen_size.x = sx
+        self.screen_size.y = sy
+        self.size.x = sx
+        self.size.y = sy - self.status_size - self.cmd_size
+
+
 
 #-------------------------------------------------------------------------------
 # Layout
