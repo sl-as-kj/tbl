@@ -369,7 +369,6 @@ def main_loop(ctl, vw):
             else:
                 logging.info("command result: {}".format(result))
                 if result.msg is not None:
-                    logging.info("command message: {}".format(result.msg))
                     vw.output = result.msg
 
 

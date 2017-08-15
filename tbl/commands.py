@@ -98,6 +98,10 @@ class CmdResult:
         self.msg = msg
 
 
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.msg)
+
+
 
 def run(cmd_name, args, input):
     """
