@@ -70,6 +70,14 @@ class View(object):
         # need be included.
         self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
 
+        self.screen_size = Coordinates(80, 25)
+
+        self.status = "?" * 16
+        self.status_size = 1
+        self.cmd_size = 1
+        self.error = None
+        self.output = None
+
         # Window size.
         self.size = Coordinates(80, 25)
         # Scroll position, as visible upper-left coordinate.
