@@ -217,14 +217,14 @@ class InputAbort(Exception):
 
 
 
-def cmd_input(win, vw, prompt=""):
+def read_input(win, vw, prompt=""):
     """
-    Prompts for and reads a line of input in the cmd line.
+    Prompts for and reads a line of text input in the cmd line.
 
     @return
       The input text.
     @raise InputAbort
-      User cancelled the edit with C-c or C-g.
+      User cancelled the edit.
     """
     def translate(c):
         if c in {3, 7}:  # C-g
@@ -326,7 +326,7 @@ def main_loop(ctl, vw):
         sy, sx = win.getmaxyx()
         vw.set_size(sx, sy)
 
-        input = partial(cmd_input, win, vw)
+        input = partial(read_input, win, vw)
 
         while True:
             # Construct the status bar contents.
