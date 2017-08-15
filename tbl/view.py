@@ -1,6 +1,6 @@
 import math
 
-from   .commands import *
+from   .commands import command, CmdError, CmdResult
 from   .lib import *
 
 #-------------------------------------------------------------------------------
@@ -64,20 +64,24 @@ class View(object):
 
 
     def __init__(self, mdl):
-        # Displayed col order.  Also controls col visibility: not all cols
-        # need be included.
-        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
-
+        # Overall dimensions.
         self.screen_size = Coordinates(80, 25)
 
-        self.status = "?" * 16
+        # Height of status bar.
         self.status_size = 1
+        # Status bar text.
+        self.status = "?" * 16
+        # Height of cmd region.
         self.cmd_size = 1
+        # Output or error text in cmd region.
         self.error = None
         self.output = None
 
-        # Window size.
-        self.size = Coordinates(80, 25)
+        # Displayed col order.  Also controls col visibility: not all cols
+        # need be included.
+        # FIXME: Add columns from elsewhre.
+        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
+
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
         # Cursor position.
@@ -95,24 +99,24 @@ class View(object):
         self.layout         = None
 
 
-    def get_fmt(self, col_id):
-        """
-        Returns the formatter for a column, by name.
-        """
-        return self.fmt[col_id]
-
-
-    def set_size(self, sx, sy):
-        # FIXME: Do we still need both sizes?
+    def set_screen_size(self, sx, sy):
         self.screen_size.x = sx
         self.screen_size.y = sy
-        self.size.x = sx
-        self.size.y = sy - self.status_size - self.cmd_size
+
+
+    @property
+    def size(self):
+        return Coordinates(
+            self.screen_size.x,
+            self.screen_size.y - self.status_size - self.cmd_size
+        )
 
 
 
 #-------------------------------------------------------------------------------
 # Layout
+
+# FIXME: Roll behavior into class.
 
 class Layout:
 
@@ -206,6 +210,8 @@ def find_col_in_layout(layout, col_idx):
         return None
 
 
+#-------------------------------------------------------------------------------
+
 def get_status(vw, mdl):
     """
     Writes the status bar text.
@@ -290,7 +296,7 @@ def hide_col(vw, c):
     if vw.cols[c].visible:
         vw.cols[c].visible = False
     else:
-        raise CmdError("column already hidden: {}".format(name))
+        raise CmdError("column already hidden")
 
     # If we hide a column to the left of the current col, move to the left.
     if vw.cur.c == c:
