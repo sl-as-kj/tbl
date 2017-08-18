@@ -374,11 +374,23 @@ def main_loop(mdl, vw, ctl):
                     vw.output = result.msg
 
 
+# FIXME: Temporary
+def choose_fmt(arr):
+    width = max( len(str(a)) for a in arr )
+    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
+    fmt.width = width
+    return fmt
+
+
 def main():
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
     mdl = io.load_test(sys.argv[1])
-    vw = view.View(mdl)
+
+    vw = view.View()
+    for col in mdl.cols:
+        vw.add_column(col.id, choose_fmt(col.arr))
+
     ctl = controller.Controller()
     main_loop(mdl, vw, ctl)
 

@@ -45,28 +45,33 @@ class Coordinates(object):
 
 #-------------------------------------------------------------------------------
 
-# FIXME: Temporary
-def choose_fmt(arr):
-    width = max( len(str(a)) for a in arr )
-    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
-    fmt.width = width
-    return fmt
-
-
 class View(object):
+    """
+    Owns the followin state:
+
+    - The order and visibility of columns in the display.
+    - Each displayed column's formatter (but not name or contents).
+    - The display size of the table.
+    - The scroll state of the table in the display.
+    - The cursor position.
+    - Selection.
+
+    """
 
     class Col:
 
-        def __init__(self, fmt):
-            self.visible    = True
+        def __init__(self, col_id, fmt):
+            self.col_id     = col_id
             self.fmt        = fmt
+            self.visible    = True
 
 
 
-    def __init__(self, mdl):
+    def __init__(self):
         # Overall dimensions.
         self.screen_size = Coordinates(80, 25)
 
+        # FIXME: Move to controller:
         # Height of status bar.
         self.status_size = 1
         # Status bar text.
@@ -76,11 +81,6 @@ class View(object):
         # Output or error text in cmd region.
         self.error = None
         self.output = None
-
-        # Displayed col order.  Also controls col visibility: not all cols
-        # need be included.
-        # FIXME: Add columns from elsewhre.
-        self.cols = [ self.Col(choose_fmt(c.arr)) for c in mdl.cols ]
 
         # Scroll position, as visible upper-left coordinate.
         self.scr = Coordinates(0, 0)
@@ -96,7 +96,15 @@ class View(object):
         self.right_border   = "\u2551"
         self.pad            = 1
 
+        self.cols           = []
         self.layout         = None
+
+
+    def add_column(self, col_id, fmt, position=None):
+        if position is None:
+            position = len(self.cols)
+        self.cols.insert(position, self.Col(col_id, fmt))
+        return position
 
 
     def set_screen_size(self, sx, sy):
