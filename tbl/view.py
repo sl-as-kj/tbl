@@ -1,7 +1,7 @@
 import math
 
 from   .commands import command, CmdError, CmdResult
-from   .lib import *
+from   .lib import clip, if_none
 
 #-------------------------------------------------------------------------------
 
