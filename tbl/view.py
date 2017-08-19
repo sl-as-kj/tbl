@@ -129,11 +129,13 @@ class View(object):
 #-------------------------------------------------------------------------------
 # Layout
 
-# FIXME: Roll behavior into class.
-
 class Layout:
     """
-    The transformation between (col, row) position and (x, y) coordinates.
+    The transformation between positions and coordinates.
+
+    Lays out (c, r) positions into (x, y) coordinates.  Not aware of scroll
+    state or screen size; computes the layout for the entire virtual table
+    relative to (0, 0) upper-left coordinates.
     """
 
     def __init__(self, vw):
@@ -149,20 +151,17 @@ class Layout:
         cols = []  # (x, width, c), c=None for row number
         text = []  # (x, width, text)
 
-        x = -vw.scr.x
-        xs = vw.size.x
+        x = 0
 
         def add_col(w, c):
             nonlocal x
-            if 0 < x + w and x < xs:
-                cols.append((x, w, c))
+            cols.append((x, w, c))
             x += w
 
         def add_text(t):
             nonlocal x
             w = len(t)
-            if 0 < x + w and x < xs:
-                text.append((x, w, t))
+            text.append((x, w, t))
             x += w
 
         need_sep = False
@@ -216,11 +215,23 @@ def _rendered_cols(vw, mdl):
     """
     # Draw columns.
     for x, w, c in vw.layout.cols:
-        # The item may be only partially visible.  Compute the start and stop
-        # slice bounds to trim it to the screen.
-        xp = max(x, 0)
-        sx = vw.size.x - xp
-        trim = slice(-x if x < 0 else None, sx if sx < w else None)
+        # Shift for scroll position.
+        x0 = x - vw.scr.x
+        x1 = x0 + w
+
+        if x1 <= 0:
+            # Off the left edge.
+            continue
+        elif vw.size.x <= x0:
+            # Off the right edge.
+            continue
+
+        # The item may be only partially visible.  Compute a slice to trim
+        # it to the visible region.
+        s0 = -x0
+        x0 = max(x0, 0)
+        s1 = vw.size.x - x0
+        trim = slice(s0 if s0 > 0 else None, s1 if s1 < w else None)
 
         if c is None:
             # Row number.
@@ -233,7 +244,7 @@ def _rendered_cols(vw, mdl):
             arr = col.arr
             name = col.name
     
-        yield c, xp, w, trim, name, fmt, arr
+        yield c, x0, w, trim, name, fmt, arr
 
 
 def _rendered_text(vw, mdl):
@@ -241,15 +252,25 @@ def _rendered_text(vw, mdl):
     Helper function to set up text decorations for rendering.
     """
     for x, w, text in vw.layout.text:
-        # The item may be only partially visible.  Compute the start and stop
-        # slice bounds to trim it to the screen.
-        xp = max(x, 0)
-        sx = vw.size.x - xp
-        trim = slice(-x if x < 0 else None, sx if sx < w else None)
+        # Shift for scroll position.
+        x0 = x - vw.scr.x
+        x1 = x0 + w
 
-        text = text[trim]
+        if x1 <= 0:
+            # Off the left edge.
+            continue
+        elif vw.size.x <= x0:
+            # Off the right edge.
+            continue
+
+        # The text may be only partially visible; trim it.
+        s0 = -x0
+        x0 = max(x0, 0)
+        s1 = vw.size.x - x0
+        text = text[s0 if s0 > 0 else None : s1 if s1 < w else None]
+
         if len(text) > 0:
-            yield xp, w, text
+            yield x0, w, text
 
 
 #-------------------------------------------------------------------------------
