@@ -168,12 +168,12 @@ class Layout:
 
         need_sep = False
 
+        if vw.left_border:
+            add_text(vw.left_border)
+
         if vw.show_row_num:
             add_col(vw.row_num_fmt.width + 2 * vw.pad, None)
             need_sep = True
-
-        if vw.left_border:
-            add_text(vw.left_border)
 
         for c, col in enumerate(vw.cols):
             if vw.separator and need_sep:
