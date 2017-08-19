@@ -140,6 +140,7 @@ def render_table(win, vw, mdl):
     """
     # Rebuild the layout.
     vw.layout = view.Layout(vw)
+    vw.layout.num_rows = mdl.num_rows
 
     # Row numbers to draw.  
     num_rows = mdl.num_rows - vw.scr.y

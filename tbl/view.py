@@ -97,12 +97,11 @@ class View(object):
         self.pad            = 1
 
         # FIXME: Determine this properly.
-        row_num_fmt         = lambda n: format(n, "04d")
-        row_num_fmt.width   = 4
+        row_num_fmt         = lambda n: format(n, "06d")
+        row_num_fmt.width   = 6
         self.row_num_fmt    = row_num_fmt
 
         self.cols           = []
-        self.num_rows       = 0
         self.layout         = None
 
 
@@ -206,6 +205,8 @@ class Layout:
         for x, w, c_ in self.cols:
             if c_ == c:
                 return x, w
+        else:
+            raise LookupError("col not in layout: {}".format(c))
 
 
 
@@ -290,7 +291,7 @@ def scroll_to_pos(vw, pos):
     Scrolls the view such that `pos` is visible.
     """
     # Find the col in the layout.
-    x, w, _, _ = find_col_in_layout(vw.layout.cols, pos.c)
+    x, w = vw.layout.get_col(pos.c)
 
     # Scroll right if necessary.
     vw.scr.x = max(x + w - vw.size.x, vw.scr.x)
