@@ -92,7 +92,7 @@ class View(object):
 
         # Decoration characters.
         self.row_num_sep    = "\u2551"
-        self.left_border    = "\u2551"
+        self.left_border    = ""
         self.separator      = "\u2502"
         self.right_border   = "\u2551"
         self.pad            = 1
@@ -152,16 +152,27 @@ class Layout:
         - `type` is `"text"` or `"col"`
         - `z` is a string or a column position
         """
-        self.x      = 0
-        self.cols   = []  # (x, width, c), c=None for row number
-        self.text   = []  # (x, width, text)
+        self.x = 0
 
-        # FIXME: Add fixed stuff.
+        # First, add fixed stuff.
+        self.fixed_cols = []
+        self.fixed_text = []
 
-        # if vw.show_row_num:
-        #     add_col(vw.row_num_fmt.width + 2 * vw.pad, None)
-        #     if vw.row_num_sep:
-        #         add_text(vw.row_num_sep)
+        if vw.show_row_num:
+            w = vw.row_num_fmt.width + 2 * vw.pad
+            self.fixed_cols.append((self.x, w, "row_num"))
+            self.x += w
+            if vw.row_num_sep:
+                w = len(vw.row_num_sep)
+                self.fixed_text.append((self.x, w, vw.row_num_sep))
+                self.x += w
+
+        # Record where the fixed stuff ends.
+        self.fixed_x = self.x
+
+        # Now add scrolling stuff.
+        self.cols = []  # (x, width, c)
+        self.text = []  # (x, width, text)
 
         def add_col(w, c):
             self.cols.append((self.x, w, c))
@@ -215,27 +226,8 @@ def _rendered_cols(vw, mdl):
     """
     Helper function to set up columns for rendering.
     """
-    # Draw columns.
-    for x, w, c in vw.layout.cols:
-        # Shift for scroll position.
-        x0 = x - vw.scr.x
-        x1 = x0 + w
-
-        if x1 <= 0:
-            # Off the left edge.
-            continue
-        elif vw.size.x <= x0:
-            # Off the right edge.
-            continue
-
-        # The item may be only partially visible.  Compute a slice to trim
-        # it to the visible region.
-        s0 = -x0
-        x0 = max(x0, 0)
-        s1 = vw.size.x - x0
-        trim = slice(s0 if s0 > 0 else None, s1 if s1 < w else None)
-
-        if c is None:
+    for x, w, c in vw.layout.fixed_cols:
+        if c == "row_num":
             # Row number.
             fmt = vw.row_num_fmt
             arr = np.arange(mdl.num_rows)  # FIXME
@@ -245,7 +237,33 @@ def _rendered_cols(vw, mdl):
             col = mdl.get_col(c)
             arr = col.arr
             name = col.name
-    
+
+        yield c, x, w, slice(None, None), name, fmt, arr
+
+    for x, w, c in vw.layout.cols:
+        # Shift for scroll position.
+        x0 = x - vw.scr.x
+        x1 = x0 + w
+
+        if x1 <= vw.layout.fixed_x:
+            # Off the left edge.
+            continue
+        elif vw.size.x <= x0:
+            # Off the right edge.
+            continue
+
+        # The item may be only partially visible.  Compute a slice to trim
+        # it to the visible region.
+        s0 = vw.layout.fixed_x - x0
+        x0 = max(x0, vw.layout.fixed_x)
+        s1 = vw.size.x - x0
+        trim = slice(s0 if s0 > 0 else None, s1 if s1 < w else None)
+
+        col     = mdl.get_col(c)
+        name    = col.name
+        fmt     = vw.cols[c].fmt
+        arr     = col.arr
+
         yield c, x0, w, trim, name, fmt, arr
 
 
@@ -253,12 +271,14 @@ def _rendered_text(vw, mdl):
     """
     Helper function to set up text decorations for rendering.
     """
+    yield from vw.layout.fixed_text
+
     for x, w, text in vw.layout.text:
         # Shift for scroll position.
         x0 = x - vw.scr.x
         x1 = x0 + w
 
-        if x1 <= 0:
+        if x1 <= vw.layout.fixed_x:
             # Off the left edge.
             continue
         elif vw.size.x <= x0:
@@ -266,7 +286,7 @@ def _rendered_text(vw, mdl):
             continue
 
         # The text may be only partially visible; trim it.
-        s0 = -x0
+        s0 = vw.layout.fixed_x - x0
         x0 = max(x0, 0)
         s1 = vw.size.x - x0
         text = text[s0 if s0 > 0 else None : s1 if s1 < w else None]
