@@ -192,7 +192,7 @@ class Layout:
         """
         for x, w, c in self.cols:
             if x <= x0 < x + w:
-                return x, w, c
+                return c
         else:
             raise LookupError("no col at x: {}".format(x0))
 
