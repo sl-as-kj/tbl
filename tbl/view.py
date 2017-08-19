@@ -91,6 +91,7 @@ class View(object):
         self.show_row_num = True
 
         # Decoration characters.
+        self.row_num_sep    = "\u2551"
         self.left_border    = "\u2551"
         self.separator      = "\u2502"
         self.right_border   = "\u2551"
@@ -133,9 +134,12 @@ class Layout:
     """
     The transformation between positions and coordinates.
 
-    Lays out (c, r) positions into (x, y) coordinates.  Not aware of scroll
-    state or screen size; computes the layout for the entire virtual table
-    relative to (0, 0) upper-left coordinates.
+    Lays out (c, r) positions into (x, y) coordinates.  
+
+    - Not aware of scroll state or screen size; computes the layout for the
+      entire virtual table relative to (0, 0) upper-left coordinates.
+
+    - Row numbers aren't included in the layout.
     """
 
     def __init__(self, vw):
@@ -148,30 +152,31 @@ class Layout:
         - `type` is `"text"` or `"col"`
         - `z` is a string or a column position
         """
-        cols = []  # (x, width, c), c=None for row number
-        text = []  # (x, width, text)
+        self.x      = 0
+        self.cols   = []  # (x, width, c), c=None for row number
+        self.text   = []  # (x, width, text)
 
-        x = 0
+        # FIXME: Add fixed stuff.
+
+        # if vw.show_row_num:
+        #     add_col(vw.row_num_fmt.width + 2 * vw.pad, None)
+        #     if vw.row_num_sep:
+        #         add_text(vw.row_num_sep)
 
         def add_col(w, c):
-            nonlocal x
-            cols.append((x, w, c))
-            x += w
+            self.cols.append((self.x, w, c))
+            self.x += w
 
         def add_text(t):
-            nonlocal x
             w = len(t)
-            text.append((x, w, t))
-            x += w
+            if w > 0:
+                self.text.append((self.x, w, t))
+                self.x += w
 
         need_sep = False
 
         if vw.left_border:
             add_text(vw.left_border)
-
-        if vw.show_row_num:
-            add_col(vw.row_num_fmt.width + 2 * vw.pad, None)
-            need_sep = True
 
         for c, col in enumerate(vw.cols):
             if vw.separator and need_sep:
@@ -181,9 +186,6 @@ class Layout:
             
         if vw.right_border:
             add_text(vw.right_border)
-
-        self.cols = cols
-        self.text = text
 
 
     def locate_col(self, x0):
