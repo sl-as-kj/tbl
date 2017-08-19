@@ -1,4 +1,4 @@
-import math
+import numpy as np
 
 from   .commands import command, CmdError, CmdResult
 from   .lib import clip, if_none
@@ -82,9 +82,9 @@ class View(object):
         self.error = None
         self.output = None
 
-        # Scroll position, as visible upper-left coordinate.
+        # (x, y) coordinates of the upper-left visible 
         self.scr = Coordinates(0, 0)
-        # Cursor position.
+        # (c, r) coordinates of the cursor position.
         self.cur = Position(0, 0)
 
         self.show_header = True
@@ -96,7 +96,13 @@ class View(object):
         self.right_border   = "\u2551"
         self.pad            = 1
 
+        # FIXME: Determine this properly.
+        row_num_fmt         = lambda n: format(n, "04d")
+        row_num_fmt.width   = 4
+        self.row_num_fmt    = row_num_fmt
+
         self.cols           = []
+        self.num_rows       = 0
         self.layout         = None
 
 
@@ -127,95 +133,122 @@ class View(object):
 # FIXME: Roll behavior into class.
 
 class Layout:
-
-    def __init__(self, mdl, vw):
-        cols = lay_out_cols(mdl, vw)
-        self.cols       = list(cols)
-        self.num_rows   = mdl.num_rows
-
-
-
-def lay_out_cols(mdl, vw):
     """
-    Computes the column layout.
-
-    Generates `x, w, type, z` pairs, where,
-    - `x` is the starting character position
-    - `w` is the width
-    - `type` is `"text"` or `"col"`
-    - `z` is a string or a column position
+    The transformation between (col, row) position and (x, y) coordinates.
     """
-    x = 0
 
-    first = True
+    def __init__(self, vw):
+        """
+        Computes the column layout.
 
-    if vw.show_row_num:
-        digits = int(math.log10(mdl.num_rows)) + 1
-        w = digits + 2 * vw.pad
-        yield x, w, "row_num", digits
-        x += w
+        Generates `x, w, type, z` pairs, where,
+        - `x` is the starting character position
+        - `w` is the width
+        - `type` is `"text"` or `"col"`
+        - `z` is a string or a column position
+        """
+        cols = []  # (x, width, c), c=None for row number
+        text = []  # (x, width, text)
 
-    if vw.left_border:
-        w = len(vw.left_border)
-        yield x, w, "text", vw.left_border
-        x += w
+        x = -vw.scr.x
+        xs = vw.size.x
 
-    for c, col in enumerate(vw.cols):
-        if col.visible:
-            if first:
-                first = False
-            elif vw.separator:
-                w = len(vw.separator)
-                yield x, w, "text", vw.separator
-                x += w
-
-            w = col.fmt.width + 2 * vw.pad
-            yield x, w, "col", c
+        def add_col(w, c):
+            nonlocal x
+            if 0 < x + w and x < xs:
+                cols.append((x, w, c))
             x += w
 
-    if vw.right_border:
-        w = len(vw.right_border)
-        yield x, w, "text", vw.right_border
-        x += w
+        def add_text(t):
+            nonlocal x
+            w = len(t)
+            if 0 < x + w and x < xs:
+                text.append((x, w, t))
+            x += w
+
+        need_sep = False
+
+        if vw.show_row_num:
+            add_col(vw.row_num_fmt.width + 2 * vw.pad, None)
+            need_sep = True
+
+        if vw.left_border:
+            add_text(vw.left_border)
+
+        for c, col in enumerate(vw.cols):
+            if vw.separator and need_sep:
+                add_text(vw.separator)
+            add_col(col.fmt.width + 2 * vw.pad, c)
+            need_sep = True
+            
+        if vw.right_border:
+            add_text(vw.right_border)
+
+        self.cols = cols
+        self.text = text
 
 
-def shift_layout_cols(layout, x0, x_size):
-    """
-    Shifts and filters the layout for scroll position and screen width.
-
-    Shifts `x` positions by `x0`, and filters out entries that are either
-    entirely left of `x0` or entirely right of `x0 + x_size`.
-    """
-    for x, w, type, val in layout:
-        x -= x0
-        if x + w <= 0:
-            continue
-        elif x >= x_size:
-            break
+    def locate_col(self, x0):
+        """
+        Returns the layout entry containing an x coordinate.
+        """
+        for x, w, c in self.cols:
+            if x <= x0 < x + w:
+                return x, w, c
         else:
-            yield x, w, type, val
+            raise LookupError("no col at x: {}".format(x0))
 
 
-def locate_in_layout(layout, x0):
-    """
-    Returns the layout entry containing an x coordinate.
-    """
-    for x, w, type, val in layout:
-        if x <= x0 < x + w:
-            return x, w, type, val
-    else:
-        return None
+    def get_col(self, c):
+        """
+        Returns the layout entry for a column.
+        """
+        for x, w, c_ in self.cols:
+            if c_ == c:
+                return x, w
 
 
-def find_col_in_layout(layout, col_idx):
+
+def _rendered_cols(vw, mdl):
     """
-    Returns the layout entry for a column.
+    Helper function to set up columns for rendering.
     """
-    for x, w, type, val in layout:
-        if type == "col" and val == col_idx:
-            return x, w, type, val
-    else:
-        return None
+    # Draw columns.
+    for x, w, c in vw.layout.cols:
+        # The item may be only partially visible.  Compute the start and stop
+        # slice bounds to trim it to the screen.
+        xp = max(x, 0)
+        sx = vw.size.x - xp
+        trim = slice(-x if x < 0 else None, sx if sx < w else None)
+
+        if c is None:
+            # Row number.
+            fmt = vw.row_num_fmt
+            arr = np.arange(mdl.num_rows)  # FIXME
+            name = "row #"
+        else:
+            fmt = vw.cols[c].fmt
+            col = mdl.get_col(c)
+            arr = col.arr
+            name = col.name
+    
+        yield c, xp, w, trim, name, fmt, arr
+
+
+def _rendered_text(vw, mdl):
+    """
+    Helper function to set up text decorations for rendering.
+    """
+    for x, w, text in vw.layout.text:
+        # The item may be only partially visible.  Compute the start and stop
+        # slice bounds to trim it to the screen.
+        xp = max(x, 0)
+        sx = vw.size.x - xp
+        trim = slice(-x if x < 0 else None, sx if sx < w else None)
+
+        text = text[trim]
+        if len(text) > 0:
+            yield xp, w, text
 
 
 #-------------------------------------------------------------------------------
@@ -285,8 +318,11 @@ def move_cur_to_coord(vw, x, y):
     Does nothing if the coordinates don't correspond to a position, _e.g._
     the position is on a column separator.
     """
-    _, _, type, c = locate_in_layout(vw.layout.cols, vw.scr.x + x)
-    if type == "col":
+    try:
+        c = vw.layout.locate_col(vw.scr.x + x)
+    except LookupError:
+        pass
+    else:
         # FIXME: Compute row number correctly.
         r = vw.scr.y + y - 1
         move_cur_to(vw, c, r)
