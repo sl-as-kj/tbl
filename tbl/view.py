@@ -191,6 +191,8 @@ class Layout:
             add_text(vw.left_border)
 
         for c, col in enumerate(vw.cols):
+            if not col.visible:
+                continue
             if vw.separator and need_sep:
                 add_text(vw.separator)
             add_col(col.fmt.width + 2 * vw.pad, c)
