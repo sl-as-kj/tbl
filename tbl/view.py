@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 
 from   .commands import command, CmdError, CmdResult
@@ -329,30 +330,40 @@ def scroll_to(vw, x=None, y=None):
     vw.scr.y = clip(0, if_none(y, vw.scr.y), vw.size.y - 1)
 
 
-def scroll_to_pos(vw, pos):
+def scroll_to_col(vw, c):
     """
-    Scrolls the view such that `pos` is visible.
+    Scrolls the view such that col `c` is visible.
     """
     # Find the col in the layout.
-    x, w = vw.layout.get_col(pos.c)
+    x, w = vw.layout.get_col(c)
 
     # Scroll right if necessary.
-    vw.scr.x = max(x + w - vw.size.x, vw.scr.x)
-    # Scroll left if necessary.
-    vw.scr.x = min(x, vw.scr.x)
+    xr = x + w - vw.size.x
+    if xr > vw.scr.x:
+        logging.info("scroll right: {}".format(xr))
+        vw.scr.x = xr
 
+    # Scroll left if necessary.
+    xl = x - vw.layout.fixed_x
+    if xl < vw.scr.x:
+        logging.info("scroll left: {}".format(xl))
+        vw.scr.x = xl
+
+
+def scroll_to_row(vw, r):
     # Scroll up if necessary.
-    vw.scr.y = min(vw.cur.r, vw.scr.y)
+    vw.scr.y = min(r, vw.scr.y)
     # Scroll down if necessary.
     sy = vw.size.y - (1 if vw.show_header else 0)
-    vw.scr.y = max(vw.cur.r - sy + 1, vw.scr.y)
+    vw.scr.y = max(r - sy + 1, vw.scr.y)
 
 
 def move_cur_to(vw, c=None, r=None):
     vw.cur.c = clip(0, if_none(c, vw.cur.c), len(vw.cols) - 1)
     assert vw.cols[vw.cur.c].visible
     vw.cur.r = clip(0, if_none(r, vw.cur.r), vw.layout.num_rows - 1)
-    scroll_to_pos(vw, vw.cur)
+    scroll_to_col(vw, vw.cur.c)
+    scroll_to_row(vw, vw.cur.r)
 
 
 def move_cur_to_coord(vw, x, y):
