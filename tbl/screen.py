@@ -13,7 +13,7 @@ import numpy as np
 import os
 import sys
 
-from   . import commands, controller, io, keymap, view
+from   . import commands, controller, formatter, io, keymap, view
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .text import pad, palide
@@ -340,14 +340,6 @@ def main_loop(mdl, vw, ctl):
                     vw.output = result.msg
 
 
-# FIXME: Temporary
-def choose_fmt(arr):
-    width = max( len(str(a)) for a in arr )
-    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
-    fmt.width = width
-    return fmt
-
-
 def main():
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
@@ -355,7 +347,8 @@ def main():
 
     vw = view.View()
     for col in mdl.cols:
-        vw.add_column(col.id, choose_fmt(col.arr))
+        fmt = formatter.choose_formatter(col.arr)
+        vw.add_column(col.id, fmt)
 
     ctl = controller.Controller()
     main_loop(mdl, vw, ctl)
