@@ -139,7 +139,8 @@ def render_table(win, vw, mdl):
     Renders `mdl` with view `vw` in curses `win`.
     """
     # Rebuild the layout.
-    vw.layout = view.Layout(mdl, vw)
+    vw.layout = view.Layout(vw)
+    vw.layout.num_rows = mdl.num_rows
 
     # Row numbers to draw.  
     num_rows = mdl.num_rows - vw.scr.y
@@ -152,64 +153,29 @@ def render_table(win, vw, mdl):
     # The padding at the left and right of each field value.
     pad = " " * vw.pad
 
-    # Now, draw.
-    col_layout = view.shift_layout_cols(vw.layout.cols, vw.scr.x, vw.size.x)
-    for x, w, type, z in col_layout:
-        c, r = vw.cur
+    # Draw columns.
+    for c, x, w, trim, name, fmt, arr in view._rendered_cols(vw, mdl):
+        for y, row in enumerate(rows):
+            attr = (
+                     Attrs.cur_pos if c == vw.cur.c and row == vw.cur.r
+                else Attrs.cur_col if c == vw.cur.c
+                else Attrs.cur_row if                   row == vw.cur.r
+                else Attrs.normal
+            )
+            # FIXME: Draw headers in a separate loop.
+            if row == -1:
+                # Header.
+                text = palide(name, w, elide_pos=0.7)
+                attr |= curses.A_UNDERLINE
+            else:
+                text = pad + fmt(arr[row]) + pad
+            win.addstr(y, x, text[trim], attr)
 
-        # The item may be only partially visible.  Compute the start and stop
-        # slice bounds to trim it to the screen.
-        if x < 0:
-            t0 = -x
-            x = 0
-        else:
-            t0 = None
-        if x + w >= vw.size.x:
-            t1 = vw.size.x - x
-        else:
-            t1 = None
-
-        if type == "text":
-            # A fixed text item.
-            text = z[t0 : t1]
-            if len(z) > 0:
-                for y, row in enumerate(rows):
-                    attr =  Attrs.cur_row if row == r else Attrs.normal
-                    win.addstr(y, x, text, attr)
-
-        elif type == "col":
-            # A column from the model.
-            c = z
-            fmt = vw.cols[c].fmt
-            arr = mdl.get_col(c).arr
-
-            for y, row in enumerate(rows):
-                attr = (
-                         Attrs.cur_pos if c == vw.cur.c and row == vw.cur.r
-                    else Attrs.cur_col if c == vw.cur.c
-                    else Attrs.cur_row if                   row == vw.cur.r
-                    else Attrs.normal
-                )
-                if row == -1:
-                    # Header.
-                    text = palide(mdl.get_col(c).name, w, elide_pos=0.7)
-                    attr |= curses.A_UNDERLINE
-                else:
-                    text = (pad + fmt(arr[row]) + pad)
-                win.addstr(y, x, text[t0 : t1], attr)
-
-        elif type == "row_num":
-            fmt_str = "0{}d".format(z)
-            for y, row in enumerate(rows):
-                attr = Attrs.cur_row if row == vw.cur.r else Attrs.normal
-                if row == -1:
-                    # Header
-                    pass
-                else:
-                    win.addstr(y, x, pad + format(row, fmt_str) + pad, attr)
-
-        else:
-            raise NotImplementedError("type: {!r}".format(type))
+    # Draw text.
+    for x, w, text in view._rendered_text(vw, mdl):
+        for y, row in enumerate(rows):
+            attr = Attrs.cur_row if row == vw.cur.r else Attrs.normal
+            win.addstr(y, x, text, attr)
 
 
 #-------------------------------------------------------------------------------
@@ -374,11 +340,23 @@ def main_loop(mdl, vw, ctl):
                     vw.output = result.msg
 
 
+# FIXME: Temporary
+def choose_fmt(arr):
+    width = max( len(str(a)) for a in arr )
+    fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
+    fmt.width = width
+    return fmt
+
+
 def main():
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
     mdl = io.load_test(sys.argv[1])
-    vw = view.View(mdl)
+
+    vw = view.View()
+    for col in mdl.cols:
+        vw.add_column(col.id, choose_fmt(col.arr))
+
     ctl = controller.Controller()
     main_loop(mdl, vw, ctl)
 
