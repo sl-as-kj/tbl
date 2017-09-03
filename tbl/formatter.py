@@ -1,5 +1,9 @@
 import logging
 
+from   .commands import command, CmdError, CmdResult
+
+#-------------------------------------------------------------------------------
+
 try:
     from fixfmt.numpy import choose_formatter
 
@@ -12,4 +16,25 @@ except ImportError:
         fmt = lambda v: str(v)[: width] + " " * (width - len(str(v)[: width]))
         fmt.width = width
         return fmt
+
+#-------------------------------------------------------------------------------
+
+@command()
+def decrease_column_width(vw):
+    fmt = vw.cols[vw.cur.c].fmt
+    try:
+        if fmt.size > 1:
+            fmt.size -= 1
+    except AttributeError:
+        pass
+
+
+@command()
+def increase_column_width(vw):
+    fmt = vw.cols[vw.cur.c].fmt
+    try:
+        fmt.size += 1
+    except AttributeError:
+        pass
+
 
