@@ -38,3 +38,29 @@ def increase_column_width(vw):
         pass
 
 
+@command()
+def decrease_column_precision(vw):
+    fmt = vw.cols[vw.cur.c].fmt
+    try:
+        if fmt.precision is None:
+            pass
+        elif fmt.precision is 0:
+            fmt.precision = None
+        else:
+            fmt.precision -= 1
+    except AttributeError:
+        pass
+
+
+@command()
+def increase_column_precision(vw):
+    fmt = vw.cols[vw.cur.c].fmt
+    try:
+        if fmt.precision is None:
+            fmt.precision = 0
+        else:
+            fmt.precision += 1
+    except AttributeError:
+        pass
+
+

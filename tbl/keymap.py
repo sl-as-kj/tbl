@@ -59,8 +59,10 @@ def get_default():
         ("C-x", "C-w")  : "save-as",
         "C-z"           : "undo",
 
-        "<"             : "decrease-column-width",
-        ">"             : "increase-column-width",
+        ";"             : "decrease-column-width",
+        "'"             : "increase-column-width",
+        ":"             : "decrease-column-precision",
+        "\""            : "increase-column-precision",
 
         "M-#"           : "toggle-show-row-num",
         "M-$"           : "hide-column",
