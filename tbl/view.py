@@ -147,11 +147,10 @@ class Layout:
         """
         Computes the column layout.
 
-        Generates `x, w, type, z` pairs, where,
+        The layout is a series of `(x, w, val)` tripes, where 
         - `x` is the starting character position
         - `w` is the width
-        - `type` is `"text"` or `"col"`
-        - `z` is a string or a column position
+        - `val` is a string literal or a column position
         """
         self.x = 0
 
@@ -216,6 +215,9 @@ class Layout:
     def get_col(self, c):
         """
         Returns the layout entry for a column.
+
+        :return:
+          The x position and width for the column in the layout.
         """
         for x, w, c_ in self.cols:
             if c_ == c:
