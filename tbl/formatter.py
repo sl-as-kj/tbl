@@ -1,11 +1,11 @@
 import logging
 
-from   .commands import command, CmdError, CmdResult
+from   .commands import command
 
 #-------------------------------------------------------------------------------
 
 try:
-    from fixfmt.numpy import choose_formatter
+    from fixfmt.npfmt import choose_formatter
 
 except ImportError:
     # Not available.
