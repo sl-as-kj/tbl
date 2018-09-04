@@ -6,7 +6,7 @@ from   .lib import clip, if_none
 
 #-------------------------------------------------------------------------------
 
-class Position(object):
+class Position:
     """
     A location in (col, row) index coordinates.
     """
@@ -25,7 +25,7 @@ class Position(object):
 
 
 
-class Coordinates(object):
+class Coordinates:
     """
     A location in character (x, y) coordinates.
     """
@@ -46,7 +46,7 @@ class Coordinates(object):
 
 #-------------------------------------------------------------------------------
 
-class View(object):
+class View:
     """
     Owns the followin state:
 
