@@ -5,15 +5,14 @@ from   .model import Model
 
 #-------------------------------------------------------------------------------
 
+# FIXME: For now, use pandas to load and convert CSV files.
 def load_test(path):
-    with open(path) as file:
-        reader = csv.reader(file)
-        rows = iter(reader)
-        names = next(rows)
-        arrs = zip(*list(rows))
+    import pandas as pd
+
     mdl = Model(path)
-    for arr, name in zip(arrs, names):
-        mdl.add_col(arr, name)
+    df = pd.read_csv(path)
+    for name in df.columns:
+        mdl.add_col(df[name], name)
     return mdl
 
 
