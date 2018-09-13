@@ -444,6 +444,16 @@ def move_down(vw):
 
 
 @command()
+def move_up_page(vw):
+    move_cur_to(vw, r=vw.cur.r - (vw.size.y - 2))
+
+
+@command()
+def move_down_page(vw):
+    move_cur_to(vw, r=vw.cur.r + (vw.size.y - 2))
+
+
+@command()
 def scroll_left(vw):
     scroll_to(vw, vw.scr.x - 1)
 

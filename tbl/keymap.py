@@ -9,11 +9,6 @@ combo must be tagged as a prefix in this way.
 
 #-------------------------------------------------------------------------------
 
-from   functools import partial
-
-from   . import commands, controller, io, model, view
-from   . import screen as scr
-
 #-------------------------------------------------------------------------------
 
 PREFIX = object()
@@ -54,6 +49,8 @@ def get_default():
         "C-k"           : "delete-row",
         "C-p"           : "move-up",     # previous
         "C-n"           : "move-down",   # next
+        "M-v"           : "move-up-page",
+        "C-v"           : "move-down-page",
         "C-x"           : PREFIX,
         ("C-x", "C-s")  : "save",
         ("C-x", "C-w")  : "save-as",
