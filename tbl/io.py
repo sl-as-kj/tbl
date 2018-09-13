@@ -1,14 +1,24 @@
 import csv
+from   pathlib import Path
 
 from   .commands import command, CmdResult, CmdError
 from   .model import Model
 
 #-------------------------------------------------------------------------------
 
-# FIXME: For now, use pandas to load and convert CSV files.
-def load_test(path):
-    import pandas as pd
+def load_model(path, *, suffix=None):
+    path = Path(path)
+    suffix = path.suffix if suffix is None else suffix
 
+    if suffix == ".csv":
+        return load_model_csv(path)
+    else:
+        raise ValueError(f"can't read {suffix} files")
+
+
+def load_model_csv(path):
+    # FIXME: For now, use pandas to load and convert CSV files.
+    import pandas as pd
     mdl = Model(path)
     df = pd.read_csv(path)
     for name in df.columns:

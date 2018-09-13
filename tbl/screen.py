@@ -343,7 +343,7 @@ def main_loop(mdl, vw, ctl):
 def main():
     logging.basicConfig(filename="log", level=logging.DEBUG)
 
-    mdl = io.load_test(sys.argv[1])
+    mdl = io.load_model(sys.argv[1])
 
     vw = view.View()
     for col in mdl.cols:
