@@ -38,5 +38,8 @@ setuptools.setup(
     package_data={},
     data_files=[],
     entry_points={},
+    scripts=[
+        "bin/ntab",
+    ],
 )
 

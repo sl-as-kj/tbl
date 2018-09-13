@@ -11,9 +11,8 @@ from   functools import partial
 import logging
 import numpy as np
 import os
-import sys
 
-from   . import commands, controller, formatter, io, keymap, view
+from   . import commands, keymap, view
 from   .curses_keyboard import get_key
 from   .lib import log
 from   .text import pad, palide
@@ -338,23 +337,5 @@ def main_loop(mdl, vw, ctl):
                 logging.info("command result: {}".format(result))
                 if result.msg is not None:
                     vw.output = result.msg
-
-
-def main():
-    logging.basicConfig(filename="log", level=logging.DEBUG)
-
-    mdl = io.load_model(sys.argv[1])
-
-    vw = view.View()
-    for col in mdl.cols:
-        fmt = formatter.choose_formatter(col.arr)
-        vw.add_column(col.id, fmt)
-
-    ctl = controller.Controller()
-    main_loop(mdl, vw, ctl)
-
-
-if __name__ == "__main__":
-    main()
 
 
