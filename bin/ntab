@@ -18,7 +18,7 @@ parser.add_argument(
     "path", metavar="FILE", 
     help="load table from FILE")
 parser.add_argument(
-    "--log", metavar="LEVEL",
+    "--log", metavar="LEVEL", default="WARNING",
     help="log at LEVEL")
 args = parser.parse_args()
 
