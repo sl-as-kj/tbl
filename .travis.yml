@@ -1,6 +1,10 @@
 language: python
 python:
   - "3.6"
+matrix:
+  include:
+    - os: linux
+      env: COMPILER_NAME=gcc CXX=g++-5 CC=gcc-5
 
 install: 
   - pip install -r requirements.txt
