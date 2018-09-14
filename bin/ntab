@@ -6,6 +6,7 @@ Interactively display, browse, and edit a tabular data file.
 
 import argparse
 import logging
+from   pathlib import Path
 
 from   tbl import controller, formatter, io, view
 from   tbl.screen import main_loop
@@ -24,7 +25,8 @@ args = parser.parse_args()
 
 logging.getLogger().setLevel(getattr(logging, args.log.upper()))
 
-mdl = io.load_model(args.path)
+source = io.make_source(args.path)
+mdl = io.load(source)
 
 vw = view.View()
 for col in mdl.cols:
