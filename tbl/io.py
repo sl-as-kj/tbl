@@ -6,69 +6,109 @@ from   .model import Model
 
 #-------------------------------------------------------------------------------
 
-def load_csv(source):
-    # FIXME: For now, use pandas to load and convert CSV files.
-    import pandas as pd
-    df = pd.read_csv(source["path"])
-    return Model(cols={ n: df[n] for n in df.columns })
+class Source:
+    """
+    Method for loading, and optionally dumping, a table.
+
+    This class is for documentation purposes only.  Source classes don't need to
+    inherit from it.
+    """
+
+    # Mapping from source names to source types.
+    TYPES = {}
+
+    # Mapping from file suffixes to source types.
+    FILE_SUFFIXES = {}
 
 
-def dump_csv(mdl):
-    with open(mdl.source["path"], "w") as file:
-        writer = csv.writer(file)
-        # Write header.
-        header = [col.name for col in mdl.cols]
-        writer.writerow(header)
-        # Write rows.
-        for row_num in range(mdl.num_rows):
-            row = [str(c.arr[row_num]) for c in mdl.cols]
-            writer.writerow(row)
+    def __str__(self):
+        """
+        User-visible representation of the source.
+        """
+
+    @classmethod
+    def parse(Class, source_str):
+        """
+        Parses a source from the source string.
+        """
+
+    def load(self) -> Model:
+        """
+        Reads a model.
+        """
+
+    def dump(self, mdl: Model):
+        """
+        Writes a model.
+
+        :raise NotImplemented:
+        """
+        
+
+
+class CSVSource(Source):
+
+    def __init__(self, path):
+        self.__path = Path(path)
+
+
+    def __str__(self):
+        return str(self.__path)
+
+
+    @classmethod
+    def parse(Class, source_str):
+        return Class(source_str)
+
+
+    def load(self):
+        # FIXME: For now, use pandas to load and convert CSV files.
+        import pandas as pd
+        df = pd.read_csv(self.__path)
+        return Model(cols={ n: df[n] for n in df.columns })
+
+
+    def dump(self, mdl):
+        with open(self.__path, "w") as file:
+            writer = csv.writer(file)
+            # Write header.
+            header = [ col.name for col in mdl.cols ]
+            writer.writerow(header)
+            # Write rows.
+            for row_num in range(mdl.num_rows):
+                row = [ str(c.arr[row_num]) for c in mdl.cols ]
+                writer.writerow(row)
+
+
+
+Source.TYPES["csv"] = CSVSource
+Source.FILE_SUFFIXES[".csv"] = CSVSource
 
 
 #-------------------------------------------------------------------------------
-
-SUFFIXES = {
-    "csv": (load_csv, dump_csv),
-}
-
 
 def make_source(source_str):
     """
     Constructs a source from a path string.
     """
     if "::" in source_str:
-        format, path = source_str.split("::", 1)
-        path = Path(path)
+        source_name, source_str = source_str.split("::", 1)
+        try:
+            Src = Source.TYPES[source_name]
+        except KeyError:
+            raise ValueError(f"unknown source type: {source_name}") from None
+        return Src.parse(source_str)
+
     else:
+        # Assume it's a path, and take the path from the file suffix.
         path = Path(source_str)
-        format = path.suffix.lstrip(".")
-    return {"format": format, "path": path}
-
-
-def load(source):
-    format = source["format"]
-    try:
-        load, _ = SUFFIXES[format]
-    except KeyError:
-        raise ValueError(f"unknown format: {format}") from None
-    return load(source)
-
-
-def dump(source, mdl):
-    """
-    :raise ValueError:
-      The source type is unrecognized.
-    :raise NotImplementedError:
-      The format used for `mdl` does not support dumping.
-    """
-    format = source["format"]
-    if format is None:
-        raise NotImplementedError(f"can't write with format {format}")
-    try:
-        _, dump = SUFFIXES[format]
-    except KeyError:
-        raise ValueError(f"unknown format: {format}") from None
-    return dump(mdl)
+        try:
+            Src = Source.FILE_SUFFIXES[path.suffix]
+        except KeyError:
+            raise ValueError(
+                f"unknown source for suffix: {path.suffix}") from None
+        else:
+            return Src(path)
 
 
 def open(source_str):
@@ -76,10 +116,9 @@ def open(source_str):
     Loads a model based on a source string.
     """
     source = make_source(source_str)
-    mdl = load(source)
+    mdl = source.load()
     mdl.source = source
     return mdl
-
 
 
 #-------------------------------------------------------------------------------
@@ -88,17 +127,16 @@ def open(source_str):
 @command()
 def save(mdl):
     # FIXME: Confirm overwrite.
-    dump(mdl.source, mdl)
-    # FIXME: Include source in message.
-    return CmdResult(msg="saved")
+    mdl.source.dump(mdl)
+    return CmdResult(msg=f"saved: {mdl.source}")
 
 
 @command()
-def save_as(mdl, filename):
-    if filename == "":
-        raise CmdError("empty filename")
+def save_as(mdl, source_str):
+    if source_str == "":
+        raise CmdError("no source given")
 
-    mdl.source = make_source(filename)
+    mdl.source = make_source(source_str)
     return save(mdl)
 
 

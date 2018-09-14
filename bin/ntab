@@ -15,8 +15,8 @@ from   tbl.screen import main_loop
 logging.basicConfig(filename="log", level=logging.WARNING)
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
-    "path", metavar="FILE", 
-    help="load table from FILE")
+    "source", metavar="SOURCE", 
+    help="load table from SOURCE path or specification")
 parser.add_argument(
     "--log", metavar="LEVEL", default="WARNING",
     help="log at LEVEL")
@@ -24,8 +24,7 @@ args = parser.parse_args()
 
 logging.getLogger().setLevel(getattr(logging, args.log.upper()))
 
-source = io.make_source(args.path)
-mdl = io.load(source)
+mdl = io.open(args.source)
 
 vw = view.View()
 for col in mdl.cols:
