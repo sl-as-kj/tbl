@@ -17,13 +17,16 @@ class Model:
             self.arr    = arr
 
 
-    def __init__(self, filename):
-        # Columns, in order.
-        self.cols       = []
+    def __init__(self, cols={}, *, source={}):
+        self.cols = []
+
         # Number of rows in the table, or None if no columns so far.
         # FIXME: Make a property?
         self.num_rows   = None
-        self.filename   = filename
+        self.source     = source
+
+        for name, arr in cols.items():
+            self.add_col(arr, name=name)
 
 
     def add_col(self, arr, name=None, *, position=None):

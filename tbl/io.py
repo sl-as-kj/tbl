@@ -6,45 +6,59 @@ from   .model import Model
 
 #-------------------------------------------------------------------------------
 
-def load_model(path, *, suffix=None):
-    path = Path(path)
-    suffix = path.suffix if suffix is None else suffix
-
-    if suffix == ".csv":
-        return load_model_csv(path)
+def make_source(path_str):
+    """
+    Constructs a source from a path string.
+    """
+    if "::" in path_str:
+        format, path = path_str.split("::", 1)
+        path = Path(path)
     else:
-        raise ValueError(f"can't read {suffix} files")
+        path = Path(path_str)
+        format = path.suffix.lstrip(".")
+    return {"format": format, "path": path}
 
 
-def load_model_csv(path):
+def load_csv(source):
     # FIXME: For now, use pandas to load and convert CSV files.
     import pandas as pd
-    mdl = Model(path)
-    df = pd.read_csv(path)
-    for name in df.columns:
-        mdl.add_col(df[name], name)
-    return mdl
+    df = pd.read_csv(source["path"])
+    return Model(cols={ n: df[n] for n in df.columns }, source=source)
 
 
-def _save(mdl, filename):
-    """
-    Save the model to a file.
-    TODO: This needs a lot of work to preserve
-    formatting, etc.
-    :param mdl:
-    :param filename:
-    :param new_filename:
-    :return:
-    """
-    with open(filename, 'w') as csvfile:
-        writer = csv.writer(csvfile)
-        # write header
+def dump_csv(mdl):
+    with open(mdl.source["path"], "w") as file:
+        writer = csv.writer(file)
+        # Write header.
         header = [col.name for col in mdl.cols]
         writer.writerow(header)
-        # write rows.
+        # Write rows.
         for row_num in range(mdl.num_rows):
             row = [str(c.arr[row_num]) for c in mdl.cols]
             writer.writerow(row)
+
+
+SUFFIXES = {
+    "csv": (load_csv, dump_csv),
+}
+
+
+def load(source):
+    format = source["format"]
+    try:
+        load, _ = SUFFIXES[format]
+    except KeyError:
+        raise ValueError(f"unknown format: {format}") from None
+    return load(source)
+
+
+def dump(mdl):
+    format = mdl.source["format"]
+    try:
+        _, dump = SUFFIXES[format]
+    except KeyError:
+        raise ValueError(f"unknown format: {format}") from None
+    return dump(mdl)
 
 
 #-------------------------------------------------------------------------------
@@ -53,17 +67,25 @@ def _save(mdl, filename):
 @command()
 def save(mdl):
     # FIXME: Confirm overwrite.
-    _save(mdl, mdl.filename)
+    dump(mdl)
     return CmdResult(msg="saved: {}".format(mdl.filename))
 
 
 @command()
 def save_as(mdl, filename):
-    if len(filename) == 0:
+    if filename == "":
         raise CmdError("empty filename")
+    path = Path(filename)
+
+    # Choose the format based on the suffix.
+    if path.suffix == "":
+        raise CmdError(f"can't determine format for '{path}'")
+    format = path.suffix.lstrip(".")
+
+    mdl.source = {"format": format, "path": path}
+
     # FIXME: Confirm overwrite.
-    _save(mdl, filename)
-    mdl.filename = filename
+    dump(mdl)
     return CmdResult(msg="saved: {}".format(filename))
 
 
