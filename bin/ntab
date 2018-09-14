@@ -6,7 +6,6 @@ Interactively display, browse, and edit a tabular data file.
 
 import argparse
 import logging
-from   pathlib import Path
 
 from   tbl import controller, formatter, io, view
 from   tbl.screen import main_loop

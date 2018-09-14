@@ -6,24 +6,11 @@ from   .model import Model
 
 #-------------------------------------------------------------------------------
 
-def make_source(path_str):
-    """
-    Constructs a source from a path string.
-    """
-    if "::" in path_str:
-        format, path = path_str.split("::", 1)
-        path = Path(path)
-    else:
-        path = Path(path_str)
-        format = path.suffix.lstrip(".")
-    return {"format": format, "path": path}
-
-
 def load_csv(source):
     # FIXME: For now, use pandas to load and convert CSV files.
     import pandas as pd
     df = pd.read_csv(source["path"])
-    return Model(cols={ n: df[n] for n in df.columns }, source=source)
+    return Model(cols={ n: df[n] for n in df.columns })
 
 
 def dump_csv(mdl):
@@ -38,9 +25,24 @@ def dump_csv(mdl):
             writer.writerow(row)
 
 
+#-------------------------------------------------------------------------------
+
 SUFFIXES = {
     "csv": (load_csv, dump_csv),
 }
+
+
+def make_source(source_str):
+    """
+    Constructs a source from a path string.
+    """
+    if "::" in source_str:
+        format, path = source_str.split("::", 1)
+        path = Path(path)
+    else:
+        path = Path(source_str)
+        format = path.suffix.lstrip(".")
+    return {"format": format, "path": path}
 
 
 def load(source):
@@ -52,13 +54,32 @@ def load(source):
     return load(source)
 
 
-def dump(mdl):
-    format = mdl.source["format"]
+def dump(source, mdl):
+    """
+    :raise ValueError:
+      The source type is unrecognized.
+    :raise NotImplementedError:
+      The format used for `mdl` does not support dumping.
+    """
+    format = source["format"]
+    if format is None:
+        raise NotImplementedError(f"can't write with format {format}")
     try:
         _, dump = SUFFIXES[format]
     except KeyError:
         raise ValueError(f"unknown format: {format}") from None
     return dump(mdl)
+
+
+def open(source_str):
+    """
+    Loads a model based on a source string.
+    """
+    source = make_source(source_str)
+    mdl = load(source)
+    mdl.source = source
+    return mdl
+
 
 
 #-------------------------------------------------------------------------------
@@ -67,25 +88,17 @@ def dump(mdl):
 @command()
 def save(mdl):
     # FIXME: Confirm overwrite.
-    dump(mdl)
-    return CmdResult(msg="saved: {}".format(mdl.filename))
+    dump(mdl.source, mdl)
+    # FIXME: Include source in message.
+    return CmdResult(msg="saved")
 
 
 @command()
 def save_as(mdl, filename):
     if filename == "":
         raise CmdError("empty filename")
-    path = Path(filename)
 
-    # Choose the format based on the suffix.
-    if path.suffix == "":
-        raise CmdError(f"can't determine format for '{path}'")
-    format = path.suffix.lstrip(".")
-
-    mdl.source = {"format": format, "path": path}
-
-    # FIXME: Confirm overwrite.
-    dump(mdl)
-    return CmdResult(msg="saved: {}".format(filename))
+    mdl.source = make_source(filename)
+    return save(mdl)
 
 
