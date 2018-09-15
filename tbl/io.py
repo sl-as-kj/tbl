@@ -1,5 +1,6 @@
 import csv
 from   pathlib import Path
+import sys
 
 from   .commands import command, CmdResult, CmdError
 from   .model import Model
@@ -49,7 +50,7 @@ class Source:
 class CSVSource(Source):
 
     def __init__(self, path):
-        self.__path = Path(path)
+        self.__path = "-" if path == "-" else Path(path)
 
 
     def __str__(self):
@@ -64,7 +65,7 @@ class CSVSource(Source):
     def load(self):
         # FIXME: For now, use pandas to load and convert CSV files.
         import pandas as pd
-        df = pd.read_csv(self.__path)
+        df = pd.read_csv(sys.stdin if self.__path == "-" else self.__path)
         return Model(cols={ n: df[n] for n in df.columns })
 
 
