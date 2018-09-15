@@ -32,6 +32,10 @@ def curses_screen():
     # directly with ctypes.
     os.environ["ESCDELAY"] = "0"
 
+    # Get stdin from the TTY, even if it's been redirected.
+    old_stdin_fd = os.dup(0)
+    os.dup2(os.open("/dev/tty", os.O_RDONLY), 0)
+
     win = curses.initscr()
     curses.noecho()
     curses.cbreak()
@@ -64,6 +68,9 @@ def curses_screen():
         curses.nocbreak()
         curses.echo()
         curses.endwin()
+
+        # Restore the old stdin.
+        os.dup2(old_stdin_fd, 0)
 
 
 class Attrs:
