@@ -135,6 +135,6 @@ def run(cmd_name, args, input):
 @command()
 def quit():
     # FIXME: Confirm if dirty.
-    raise SystemExit(0)
+    raise KeyboardInterrupt
 
 

@@ -334,6 +334,9 @@ def main_loop(mdl, vw, ctl):
 
             try:
                 result = commands.run(cmd_name, cmd_args, input)
+            except KeyboardInterrupt:
+                # Exit the loop.
+                break
             except InputAbort:
                 # User aborted.
                 continue
