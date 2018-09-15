@@ -2,6 +2,7 @@ import logging
 import numpy as np
 
 from   .commands import command, CmdError, CmdResult
+from   .formatter import choose_formatter
 from   .lib import clip, if_none
 
 #-------------------------------------------------------------------------------
@@ -126,6 +127,17 @@ class View:
             self.screen_size.y - self.status_size - self.cmd_size
         )
 
+
+
+def build_view(mdl):
+    """
+    Builds a view for a model, including all columns.
+    """
+    vw = View()
+    for col in mdl.cols:
+        fmt = choose_formatter(col.arr)
+        vw.add_column(col.id, fmt)
+    return vw
 
 
 #-------------------------------------------------------------------------------
